@@ -1,0 +1,47 @@
+# ======================
+# Node / npm
+# ======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ======================
+# Environment variables
+# ======================
+.env
+.env.local
+.env.*.local
+
+# ======================
+# Build outputs
+# ======================
+dist/
+build/
+.out/
+coverage/
+
+# ======================
+# Vite / React
+# ======================
+client/dist/
+client/.vite/
+
+# ======================
+# Logs
+# ======================
+logs/
+*.log
+
+# ======================
+# OS files
+# ======================
+.DS_Store
+Thumbs.db
+*.icloud
+
+# ======================
+# Editor / IDE
+# ======================
+.vscode/
+.idea/
