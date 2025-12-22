@@ -58,7 +58,7 @@ export default function HomeHero() {
           to="/library"
           className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-white/10"
         >
-          Browse all 60 →
+          Browse all 60 Ganji→
         </Link>
       </div>
     </header>
