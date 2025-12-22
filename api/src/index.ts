@@ -4,17 +4,20 @@ import chatRoutes from "./routes/chat.js";
 
 const app = express();
 
-const allowed = [
-  "http://localhost:5173",
-  "https://sajumon.netlify.app"
-];
-
 app.use(
   cors({
-    origin: allowed,
-    credentials: true,
+    origin: [
+      "https://sajumon.netlify.app",
+      "http://localhost:5173"
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false
   })
 );
+
+app.options("*", cors());
+
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (_, res) => {
