@@ -292,7 +292,11 @@ export default function Library60() {
           filtered.map((g) => {
             const p = characters[g.key];
             return (
-              <Link key={g.key} to={`/library/${g.key}`} className="block transition hover:-translate-y-0.5 hover:opacity-95">
+              <Link
+                key={g.key}
+                to={`/library/${g.key}`}
+                className="block transition hover:-translate-y-0.5 hover:opacity-95"
+              >
                 <GanjiCard
                   ganji={g}
                   hasProfile={!!p}
@@ -336,9 +340,21 @@ function GanjiCard({
             <span className="rounded-lg bg-white/10 px-2 py-1 text-sm font-semibold">
               {ganji.label}
             </span>
-            <span className="text-xs text-zinc-500">
-              {animalName ? animalName : "—"}
+            <span className="rounded-full border border-white/10 bg-zinc-950/40 px-2 py-0.5 text-xs text-zinc-300">
+              {animalName ?? "—"}
             </span>
+            {hasProfile && keywords.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {keywords.slice(0, 4).map((k) => (
+                  <span
+                    key={k}
+                    className="rounded-full border border-white/10 bg-zinc-950/40 px-3 py-1 text-xs text-zinc-200"
+                  >
+                    #{k}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-3 text-sm font-semibold text-zinc-100">
