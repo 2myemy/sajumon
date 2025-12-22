@@ -1,0 +1,1876 @@
+{
+  "gap-ja": {
+    "id": "gap-ja",
+    "title": "The Initiator",
+    "tagline": "Bold beginnings sparked by instinct and speed.",
+    "keywords": [
+      "initiative",
+      "drive",
+      "openness",
+      "curiosity",
+      "momentum"
+    ],
+    "strengths": [
+      "Starts things decisively",
+      "Strong forward energy"
+    ],
+    "pitfalls": [
+      "May rush without planning"
+    ],
+    "adviceTone": "Encouraging but grounding.",
+    "animal": {
+      "name": "Wood Rat",
+      "image": "/animals/gap-ja.png",
+      "traits": [
+        "Fast-moving",
+        "Opportunity-seeking",
+        "Highly alert",
+        "Resourceful starter"
+      ]
+    }
+  },
+  "eul-chuk": {
+    "id": "eul-chuk",
+    "title": "The Cultivator",
+    "tagline": "Quiet growth through patience and care.",
+    "keywords": [
+      "patience",
+      "consistency",
+      "steadiness",
+      "nurturing",
+      "growth"
+    ],
+    "strengths": [
+      "Builds long-term stability",
+      "Patient and dependable",
+      "Grows things slowly but surely"
+    ],
+    "pitfalls": [
+      "May resist change",
+      "Slow to adapt"
+    ],
+    "adviceTone": "Reassuring and steady.",
+    "animal": {
+      "name": "Wood Ox",
+      "image": "/animals/eul-chuk.png",
+      "traits": [
+        "Persistent",
+        "Grounded"
+      ]
+    }
+  },
+  "byeong-in": {
+    "id": "byeong-in",
+    "title": "The Visionary Spark",
+    "tagline": "Bright ideas fueled by passion.",
+    "keywords": [
+      "vision",
+      "energy",
+      "inspiration",
+      "expression",
+      "momentum"
+    ],
+    "strengths": [
+      "Inspires others with bold ideas",
+      "Radiates enthusiasm and confidence",
+      "Quick to envision new possibilities"
+    ],
+    "pitfalls": [
+      "Burns out quickly",
+      "May lose focus after the initial excitement",
+      "Can overlook practical limitations"
+    ],
+    "adviceTone": "Motivational but stabilizing.",
+    "animal": {
+      "name": "Fire Tiger",
+      "image": "/animals/byeong-in.png",
+      "traits": [
+        "Bold",
+        "Expressive",
+        "Charismatic",
+        "Emotion-driven"
+      ]
+    }
+  },
+  "jeong-myo": {
+    "id": "jeong-myo",
+    "title": "The Gentle Illuminator",
+    "tagline": "Soft light that guides without force.",
+    "keywords": [
+      "sensitivity",
+      "warmth",
+      "intuition",
+      "subtle influence",
+      "emotional clarity"
+    ],
+    "strengths": [
+      "Empathy",
+      "Refinement",
+      "Creates emotional safety",
+      "Guides others with quiet presence"
+    ],
+    "pitfalls": [
+      "Over-accommodation",
+      "Difficulty asserting personal needs",
+      "Absorbing others’ emotions too deeply"
+    ],
+    "adviceTone": "Warm and affirming.",
+    "animal": {
+      "name": "Fire Rabbit",
+      "image": "/animals/jeong-myo.png",
+      "traits": [
+        "Gentle",
+        "Perceptive",
+        "Emotionally attuned",
+        "Quietly luminous"
+      ]
+    }
+  },
+  "mu-jin": {
+    "id": "mu-jin",
+    "title": "The Stabilizer",
+    "tagline": "Holding the center when things shift.",
+    "keywords": [
+      "stability",
+      "responsibility",
+      "endurance",
+      "structure",
+      "containment"
+    ],
+    "strengths": [
+      "Grounds chaos",
+      "Dependable",
+      "Provides structural support for others",
+      "Maintains balance in unstable situations"
+    ],
+    "pitfalls": [
+      "Rigid under pressure",
+      "Difficulty adapting to rapid change",
+      "May carry too much responsibility alone"
+    ],
+    "adviceTone": "Practical and realistic.",
+    "animal": {
+      "name": "Earth Dragon",
+      "image": "/animals/mu-jin.png",
+      "traits": [
+        "Anchoring",
+        "Protective",
+        "Resilient",
+        "Territorial guardian"
+      ]
+    }
+  },
+  "gi-sa": {
+    "id": "gi-sa",
+    "title": "The Strategic Observer",
+    "tagline": "Moves after seeing the whole picture.",
+    "keywords": [
+      "strategy",
+      "observation",
+      "timing",
+      "analysis",
+      "foresight"
+    ],
+    "strengths": [
+      "Exceptional sense of timing",
+      "Deep situational insight",
+      "Able to anticipate outcomes before acting",
+      "Remains composed in complex scenarios"
+    ],
+    "pitfalls": [
+      "Over-calculation",
+      "Delayed action due to excessive analysis",
+      "May miss opportunities by waiting too long"
+    ],
+    "adviceTone": "Analytical and calm.",
+    "animal": {
+      "name": "Earth Snake",
+      "image": "/animals/gi-sa.png",
+      "traits": [
+        "Observant",
+        "Deliberate",
+        "Patient",
+        "Strategically reserved"
+      ]
+    }
+  },
+  "gyeong-o": {
+    "id": "gyeong-o",
+    "title": "The Unyielding Charger",
+    "tagline": "Direct, resilient energy that pushes forward without hesitation.",
+    "keywords": [
+      "determination",
+      "endurance",
+      "directness",
+      "discipline"
+    ],
+    "strengths": [
+      "Strong mental and physical resilience",
+      "Acts decisively under pressure",
+      "Maintains direction even in chaos"
+    ],
+    "pitfalls": [
+      "Can push too hard without rest",
+      "May ignore subtle emotional signals",
+      "Risk of burnout through overexertion"
+    ],
+    "adviceTone": "Firm but supportive. Encourages pacing, strategic rest, and awareness of long-term sustainability.",
+    "animal": {
+      "name": "Metal Horse",
+      "image": "/animals/gyeong-o.png",
+      "traits": [
+        "Powerful forward momentum",
+        "High stamina and perseverance",
+        "Action-oriented",
+        "Unyielding once a path is chosen"
+      ]
+    }
+  },
+  "sin-mi": {
+    "id": "sin-mi",
+    "title": "The Refined Guardian",
+    "tagline": "Protective strength expressed through care and precision.",
+    "keywords": [
+      "refinement",
+      "responsibility",
+      "care",
+      "structure"
+    ],
+    "strengths": [
+      "Strong sense of duty and protection",
+      "Balances logic with emotional sensitivity",
+      "Creates stable environments for others"
+    ],
+    "pitfalls": [
+      "Can carry others’ burdens too long",
+      "Difficulty expressing personal needs",
+      "May resist change once settled"
+    ],
+    "adviceTone": "Gentle but structured. Emphasizes boundaries, self-care, and gradual adjustments.",
+    "animal": {
+      "name": "Metal Goat",
+      "image": "/animals/sin-mi.png",
+      "traits": [
+        "Protective and attentive",
+        "Sensitive to imbalance",
+        "Prefers harmony over conflict"
+      ]
+    }
+  },
+  "im-sin": {
+    "id": "im-sin",
+    "title": "The Strategic Navigator",
+    "tagline": "Adaptive intelligence that thrives in complexity and motion.",
+    "keywords": [
+      "adaptability",
+      "strategy",
+      "curiosity",
+      "mobility"
+    ],
+    "strengths": [
+      "Quickly adapts to new environments",
+      "Excels at connecting ideas and people",
+      "Comfortable with uncertainty"
+    ],
+    "pitfalls": [
+      "May scatter energy across too many paths",
+      "Difficulty committing to one direction",
+      "Mental overload from constant stimulation"
+    ],
+    "adviceTone": "Flexible and exploratory. Helps narrow focus and prioritize without restricting movement.",
+    "animal": {
+      "name": "Water Monkey",
+      "image": "/animals/im-sin.png",
+      "traits": [
+        "Highly adaptable",
+        "Playful problem-solving",
+        "Learns through experimentation"
+      ]
+    }
+  },
+  "gye-yu": {
+    "id": "gye-yu",
+    "title": "The Precise Analyst",
+    "tagline": "Sharp perception refined through quiet observation.",
+    "keywords": [
+      "analysis",
+      "precision",
+      "clarity",
+      "discernment"
+    ],
+    "strengths": [
+      "Excellent attention to detail",
+      "Strong analytical judgment",
+      "Clear communication when prepared"
+    ],
+    "pitfalls": [
+      "Can become overly critical",
+      "May hesitate while perfecting decisions",
+      "Sensitive to disorder and noise"
+    ],
+    "adviceTone": "Clear, concise, and factual. Encourages trusting insight without over-polishing.",
+    "animal": {
+      "name": "Water Rooster",
+      "image": "/animals/gye-yu.png",
+      "traits": [
+        "Sharp observation",
+        "Order-seeking behavior",
+        "Alert to inconsistencies"
+      ]
+    }
+  },
+  "gap-sul": {
+    "id": "gap-sul",
+    "title": "The Principled Defender",
+    "tagline": "Upholds values with steady courage and integrity.",
+    "keywords": [
+      "principles",
+      "loyalty",
+      "protection",
+      "justice"
+    ],
+    "strengths": [
+      "Strong moral compass",
+      "Reliable in times of conflict",
+      "Protects others without hesitation"
+    ],
+    "pitfalls": [
+      "May become rigid in beliefs",
+      "Difficulty compromising emotionally",
+      "Tends to shoulder responsibility alone"
+    ],
+    "adviceTone": "Honest and grounding. Encourages flexibility while preserving core values.",
+    "animal": {
+      "name": "Wood Dog",
+      "image": "/animals/gap-sul.png",
+      "traits": [
+        "Loyal and vigilant",
+        "Protective instincts",
+        "Values trust and fairness"
+      ]
+    }
+  },
+  "eul-hae": {
+    "id": "eul-hae",
+    "title": "The Gentle Idealist",
+    "tagline": "Soft persistence guided by quiet belief.",
+    "keywords": [
+      "idealism",
+      "empathy",
+      "patience",
+      "faith"
+    ],
+    "strengths": [
+      "Deep emotional understanding",
+      "Strong inner belief system",
+      "Patient and enduring under pressure"
+    ],
+    "pitfalls": [
+      "May absorb others' emotions too deeply",
+      "Difficulty asserting boundaries",
+      "Can drift when direction is unclear"
+    ],
+    "adviceTone": "Warm and reassuring. Focuses on grounding ideals into practical next steps.",
+    "animal": {
+      "name": "Wood Pig",
+      "image": "/animals/eul-hae.png",
+      "traits": [
+        "Gentle resilience",
+        "Emotionally open",
+        "Moves steadily toward comfort and safety"
+      ]
+    }
+  },
+  "byeong-ja": {
+    "id": "byeong-ja",
+    "title": "The Igniting Pioneer",
+    "tagline": "Bright initiative that sparks movement and opportunity.",
+    "keywords": [
+      "initiative",
+      "visibility",
+      "momentum",
+      "expression"
+    ],
+    "strengths": [
+      "Quick to initiate action",
+      "Naturally draws attention and momentum",
+      "Energizes stagnant situations"
+    ],
+    "pitfalls": [
+      "May act before assessing consequences",
+      "Energy can scatter under pressure",
+      "Risk of impatience with slow progress"
+    ],
+    "adviceTone": "Encouraging and focusing. Helps channel raw energy into clear, sustainable direction.",
+    "animal": {
+      "name": "Fire Rat",
+      "image": "/animals/byeong-ja.png",
+      "traits": [
+        "Fast-acting instincts",
+        "Alert to opportunity",
+        "Thrives in dynamic environments"
+      ]
+    }
+  },
+  "jeong-chuk": {
+    "id": "jeong-chuk",
+    "title": "The Quiet Sustainer",
+    "tagline": "Inner warmth expressed through steady commitment.",
+    "keywords": [
+      "commitment",
+      "consistency",
+      "endurance",
+      "care"
+    ],
+    "strengths": [
+      "Maintains long-term dedication",
+      "Provides stability through quiet effort",
+      "Strong sense of responsibility"
+    ],
+    "pitfalls": [
+      "May suppress personal needs",
+      "Difficulty changing established routines",
+      "Emotional fatigue from over-giving"
+    ],
+    "adviceTone": "Supportive and reassuring. Encourages self-care and gradual recalibration.",
+    "animal": {
+      "name": "Fire Ox",
+      "image": "/animals/jeong-chuk.png",
+      "traits": [
+        "Steady persistence",
+        "Reliable under pressure",
+        "Works patiently toward goals"
+      ]
+    }
+  },
+  "mu-in": {
+    "id": "mu-in",
+    "title": "The Grounded Challenger",
+    "tagline": "Solid presence that meets pressure head-on.",
+    "keywords": [
+      "resilience",
+      "courage",
+      "stability",
+      "confrontation"
+    ],
+    "strengths": [
+      "Faces challenges without retreat",
+      "Strong physical and mental grounding",
+      "Provides reliable support in conflict"
+    ],
+    "pitfalls": [
+      "Can become stubborn under stress",
+      "Difficulty adapting once committed",
+      "May resist softer emotional signals"
+    ],
+    "adviceTone": "Direct and stabilizing. Focuses on standing firm while remaining adaptable.",
+    "animal": {
+      "name": "Earth Tiger",
+      "image": "/animals/mu-in.png",
+      "traits": [
+        "Bold protective instincts",
+        "Grounded strength",
+        "Confronts threats directly"
+      ]
+    }
+  },
+  "gi-myo": {
+    "id": "gi-myo",
+    "title": "The Harmonizing Anchor",
+    "tagline": "Quiet strength that stabilizes through balance.",
+    "keywords": [
+      "balance",
+      "moderation",
+      "support",
+      "harmony"
+    ],
+    "strengths": [
+      "Calms tense environments",
+      "Sensitive to imbalance and excess",
+      "Supports others without overpowering"
+    ],
+    "pitfalls": [
+      "May avoid necessary confrontation",
+      "Difficulty asserting personal priorities",
+      "Can delay decisions to preserve harmony"
+    ],
+    "adviceTone": "Gentle and centering. Encourages small, steady adjustments rather than drastic change.",
+    "animal": {
+      "name": "Earth Rabbit",
+      "image": "/animals/gi-myo.png",
+      "traits": [
+        "Peace-seeking behavior",
+        "Sensitive to surroundings",
+        "Prefers balance over extremes"
+      ]
+    }
+  },
+  "gyeong-jin": {
+    "id": "gyeong-jin",
+    "title": "The Resolute Architect",
+    "tagline": "Builds durable structures through discipline and clarity.",
+    "keywords": [
+      "structure",
+      "discipline",
+      "authority",
+      "precision"
+    ],
+    "strengths": [
+      "Strong organizational ability",
+      "Maintains order under complexity",
+      "Clear sense of hierarchy and roles"
+    ],
+    "pitfalls": [
+      "Can become overly rigid",
+      "May struggle with ambiguity",
+      "Tendency to control outcomes tightly"
+    ],
+    "adviceTone": "Clear and structured. Focuses on systems, priorities, and practical frameworks.",
+    "animal": {
+      "name": "Metal Dragon",
+      "image": "/animals/gyeong-jin.png",
+      "traits": [
+        "Commanding presence",
+        "Structural awareness",
+        "Authority through precision"
+      ]
+    }
+  },
+  "sin-sa": {
+    "id": "sin-sa",
+    "title": "The Silent Tactician",
+    "tagline": "Sharp insight applied with restraint and precision.",
+    "keywords": [
+      "tactics",
+      "calculation",
+      "restraint",
+      "insight"
+    ],
+    "strengths": [
+      "Strategic thinking under uncertainty",
+      "Strong capacity for quiet influence",
+      "Excellent risk assessment"
+    ],
+    "pitfalls": [
+      "May withhold too much information",
+      "Difficulty trusting others’ judgment",
+      "Can become isolated in decision-making"
+    ],
+    "adviceTone": "Measured and analytical. Encourages strategic transparency and timely action.",
+    "animal": {
+      "name": "Metal Snake",
+      "image": "/animals/sin-sa.png",
+      "traits": [
+        "Calculated movement",
+        "Observes before striking",
+        "Prefers precision over force"
+      ]
+    }
+  },
+  "im-o": {
+    "id": "im-o",
+    "title": "The Ocean Rider",
+    "tagline": "Big energy that moves fast, adapts fast, and learns by motion.",
+    "keywords": [
+      "momentum",
+      "adaptability",
+      "boldness",
+      "freedom"
+    ],
+    "strengths": [
+      "Handles change with confidence",
+      "Moves quickly from idea to action",
+      "Strong stamina in dynamic environments"
+    ],
+    "pitfalls": [
+      "May overcommit and exhaust energy",
+      "Can feel restless with slow progress",
+      "Sometimes avoids deeper reflection"
+    ],
+    "adviceTone": "Energizing but grounding. Encourages pacing, prioritization, and smart recovery.",
+    "animal": {
+      "name": "Water Horse",
+      "image": "/animals/im-o.png",
+      "traits": [
+        "Fast-moving and freedom-driven",
+        "Learns through experience",
+        "Prefers action over waiting"
+      ]
+    }
+  },
+  "gye-mi": {
+    "id": "gye-mi",
+    "title": "The Soft Navigator",
+    "tagline": "Gentle intuition with strong emotional intelligence and timing.",
+    "keywords": [
+      "intuition",
+      "empathy",
+      "timing",
+      "adaptability"
+    ],
+    "strengths": [
+      "Sensitive to subtle emotional shifts",
+      "Good at choosing the right timing",
+      "Creates calm in uncertain situations"
+    ],
+    "pitfalls": [
+      "May hesitate to avoid discomfort",
+      "Can absorb others’ emotions too deeply",
+      "Risk of drifting without a clear anchor"
+    ],
+    "adviceTone": "Warm and clarifying. Helps translate feelings into concrete next steps and boundaries.",
+    "animal": {
+      "name": "Water Goat",
+      "image": "/animals/gye-mi.png",
+      "traits": [
+        "Emotionally perceptive",
+        "Prefers harmony and calm",
+        "Moves gently but steadily"
+      ]
+    }
+  },
+  "gap-sin": {
+    "id": "gap-sin",
+    "title": "The Bold Connector",
+    "tagline": "Direct growth energy that thrives in networks, ideas, and movement.",
+    "keywords": [
+      "growth",
+      "connection",
+      "initiative",
+      "curiosity"
+    ],
+    "strengths": [
+      "Quick to build relationships and momentum",
+      "Learns fast through exploration",
+      "Strong drive to expand skills and options"
+    ],
+    "pitfalls": [
+      "May spread focus too thin",
+      "Can chase novelty instead of depth",
+      "Sometimes commits late after exploring too much"
+    ],
+    "adviceTone": "Practical and focusing. Encourages picking one clear direction while keeping healthy flexibility.",
+    "animal": {
+      "name": "Wood Monkey",
+      "image": "/animals/gap-sin.png",
+      "traits": [
+        "Curious and playful problem-solver",
+        "Fast learner through experimentation",
+        "Connects people and ideas quickly"
+      ]
+    }
+  },
+  "eul-yu": {
+    "id": "eul-yu",
+    "title": "The Polished Observer",
+    "tagline": "Quiet refinement with sharp eyes for detail and improvement.",
+    "keywords": [
+      "refinement",
+      "precision",
+      "analysis",
+      "taste"
+    ],
+    "strengths": [
+      "Excellent attention to detail",
+      "Refines work into high quality",
+      "Strong sense of style and clarity"
+    ],
+    "pitfalls": [
+      "Can become overly self-critical",
+      "May delay decisions while perfecting",
+      "Sensitive to messy environments or uncertainty"
+    ],
+    "adviceTone": "Clear and constructive. Helps choose the ‘good enough’ next step and build momentum.",
+    "animal": {
+      "name": "Wood Rooster",
+      "image": "/animals/eul-yu.png",
+      "traits": [
+        "Notices inconsistencies quickly",
+        "Prefers order and clean execution",
+        "Improves through steady refinement"
+      ]
+    }
+  },
+  "byeong-sul": {
+    "id": "byeong-sul",
+    "title": "The Bright Protector",
+    "tagline": "Warm leadership that defends values and keeps the team moving.",
+    "keywords": [
+      "leadership",
+      "protection",
+      "loyalty",
+      "visibility"
+    ],
+    "strengths": [
+      "Strong protective instincts for people and goals",
+      "Leads with warmth and courage",
+      "Can rally others during uncertainty"
+    ],
+    "pitfalls": [
+      "May become reactive when boundaries are crossed",
+      "Can take responsibility too personally",
+      "Risk of burning energy for others"
+    ],
+    "adviceTone": "Supportive and motivating. Encourages clear boundaries and sustainable leadership habits.",
+    "animal": {
+      "name": "Fire Dog",
+      "image": "/animals/byeong-sul.png",
+      "traits": [
+        "Loyal and vigilant",
+        "Protects what matters",
+        "Acts quickly to defend values"
+      ]
+    }
+  },
+  "jeong-hae": {
+    "id": "jeong-hae",
+    "title": "The Quiet Healer",
+    "tagline": "Soft warmth that restores, reassures, and helps others feel safe.",
+    "keywords": [
+      "empathy",
+      "comfort",
+      "healing",
+      "gentleness"
+    ],
+    "strengths": [
+      "Creates emotional safety for others",
+      "Strong compassion and patience",
+      "Good at soothing conflict and stress"
+    ],
+    "pitfalls": [
+      "May over-give and neglect self",
+      "Can avoid direct confrontation too long",
+      "Absorbs others’ emotions deeply"
+    ],
+    "adviceTone": "Warm and reassuring. Offers gentle structure: boundaries, small steps, and steady self-care.",
+    "animal": {
+      "name": "Fire Pig",
+      "image": "/animals/jeong-hae.png",
+      "traits": [
+        "Comfort-seeking and calming",
+        "Emotionally open",
+        "Restores through gentleness"
+      ]
+    }
+  },
+  "mu-ja": {
+    "id": "mu-ja",
+    "title": "The Steady Controller",
+    "tagline": "Grounded authority that stabilizes chaos and sets direction.",
+    "keywords": [
+      "stability",
+      "authority",
+      "control",
+      "practicality"
+    ],
+    "strengths": [
+      "Maintains composure under pressure",
+      "Good at setting priorities and structure",
+      "Strong sense of responsibility"
+    ],
+    "pitfalls": [
+      "Can become rigid when stressed",
+      "May underestimate emotions in decision making",
+      "Difficulty delegating when trust is low"
+    ],
+    "adviceTone": "Firm and practical. Focuses on systems, priorities, and consistent execution.",
+    "animal": {
+      "name": "Earth Rat",
+      "image": "/animals/mu-ja.png",
+      "traits": [
+        "Resource-aware and pragmatic",
+        "Plans for stability",
+        "Protects resources carefully"
+      ]
+    }
+  },
+  "gi-chuk": {
+    "id": "gi-chuk",
+    "title": "The Patient Foundation",
+    "tagline": "Slow strength that builds outcomes you can rely on.",
+    "keywords": [
+      "patience",
+      "foundation",
+      "consistency",
+      "endurance"
+    ],
+    "strengths": [
+      "Excellent long-term persistence",
+      "Builds reliable routines and structures",
+      "Strong sense of duty"
+    ],
+    "pitfalls": [
+      "May resist change once committed",
+      "Can suppress needs until exhaustion",
+      "Slow to pivot when conditions shift"
+    ],
+    "adviceTone": "Steady and reassuring. Encourages small, sustainable upgrades and clear boundaries.",
+    "animal": {
+      "name": "Earth Ox",
+      "image": "/animals/gi-chuk.png",
+      "traits": [
+        "Reliable and persistent",
+        "Works steadily toward goals",
+        "Prefers predictable progress"
+      ]
+    }
+  },
+  "gyeong-in": {
+    "id": "gyeong-in",
+    "title": "The Steel Challenger",
+    "tagline": "Sharp courage that cuts through obstacles with clarity.",
+    "keywords": [
+      "courage",
+      "clarity",
+      "decisiveness",
+      "discipline"
+    ],
+    "strengths": [
+      "Acts decisively in difficult situations",
+      "Strong boundaries and standards",
+      "Clear judgment under pressure"
+    ],
+    "pitfalls": [
+      "Can come off too blunt",
+      "May push too hard without rest",
+      "Risk of rigidity when emotions run high"
+    ],
+    "adviceTone": "Direct and precise. Encourages thoughtful action, healthy pacing, and strategic flexibility.",
+    "animal": {
+      "name": "Metal Tiger",
+      "image": "/animals/gyeong-in.png",
+      "traits": [
+        "Bold and boundary-driven",
+        "Cuts through noise quickly",
+        "Protective strength"
+      ]
+    }
+  },
+  "sin-myo": {
+    "id": "sin-myo",
+    "title": "The Elegant Judge",
+    "tagline": "Refined standards with a strong sense of balance and fairness.",
+    "keywords": [
+      "refinement",
+      "standards",
+      "balance",
+      "discernment"
+    ],
+    "strengths": [
+      "Strong eye for quality and alignment",
+      "Good at maintaining harmony with structure",
+      "Clear sense of what fits (and what doesn’t)"
+    ],
+    "pitfalls": [
+      "May become overly critical",
+      "Can hesitate while optimizing",
+      "Sensitive to disorder and inconsistency"
+    ],
+    "adviceTone": "Clear and constructive. Helps simplify choices and reduce perfection-driven delay.",
+    "animal": {
+      "name": "Metal Rabbit",
+      "image": "/animals/sin-myo.png",
+      "traits": [
+        "Graceful but firm boundaries",
+        "Quality-focused perception",
+        "Prefers calm and clean environments"
+      ]
+    }
+  },
+  "im-jin": {
+    "id": "im-jin",
+    "title": "The Deep Catalyst",
+    "tagline": "Big-picture force that reshapes direction through insight and courage.",
+    "keywords": [
+      "transformation",
+      "vision",
+      "depth",
+      "momentum"
+    ],
+    "strengths": [
+      "Sees long-term patterns and consequences",
+      "Strong capacity for transformation",
+      "Can lead change when others hesitate"
+    ],
+    "pitfalls": [
+      "May take on too much responsibility",
+      "Can become intense under stress",
+      "Needs recovery time after big pushes"
+    ],
+    "adviceTone": "Visionary but grounded. Focuses on sustainable change, not force or urgency.",
+    "animal": {
+      "name": "Water Dragon",
+      "image": "/animals/im-jin.png",
+      "traits": [
+        "Moves with deep momentum",
+        "Transforms environments",
+        "Thinks in long arcs"
+      ]
+    }
+  },
+  "gye-sa": {
+    "id": "gye-sa",
+    "title": "The Adaptive Strategist",
+    "tagline": "Subtle intuition paired with precise, deliberate action.",
+    "keywords": [
+      "intuition",
+      "focus",
+      "adaptability",
+      "precision",
+      "self-directed"
+    ],
+    "strengths": [
+      "Quickly reads subtle changes in situations",
+      "Able to concentrate deeply once committed",
+      "Balances flexibility with strategic thinking",
+      "Strong internal standards and self-discipline"
+    ],
+    "pitfalls": [
+      "Mental and emotional energy can drain quickly",
+      "Tendency to overthink before making final decisions",
+      "May isolate when under pressure",
+      "High self-expectations can lead to quiet burnout"
+    ],
+    "adviceTone": "Offers calm, grounded guidance. Avoids absolutes, presents two or three realistic options, and encourages steady, sustainable choices rather than impulsive moves.",
+    "animal": {
+      "name": "Water Snake",
+      "image": "/animals/gye-sa.png",
+      "traits": [
+        "Observes carefully before acting",
+        "Moves only when the outcome is efficient",
+        "Avoids unnecessary conflict",
+        "Highly sensitive to environmental changes"
+      ]
+    }
+  },
+  "gap-o": {
+    "id": "gap-o",
+    "title": "The Forward Pioneer",
+    "tagline": "Bold growth energy that thrives on speed, freedom, and challenge.",
+    "keywords": [
+      "initiative",
+      "growth",
+      "momentum",
+      "independence"
+    ],
+    "strengths": [
+      "Strong drive to move forward",
+      "Learns quickly through direct action",
+      "Builds momentum in new environments"
+    ],
+    "pitfalls": [
+      "Can overextend energy",
+      "May resist constraints too strongly",
+      "Sometimes skips reflection"
+    ],
+    "adviceTone": "Motivating and grounding. Encourages pacing, clarity of goals, and sustainable growth.",
+    "animal": {
+      "name": "Wood Horse",
+      "image": "/animals/gap-o.png",
+      "traits": [
+        "Freedom-driven movement",
+        "Fast learning through action",
+        "Prefers open paths"
+      ]
+    }
+  },
+  "eul-mi": {
+    "id": "eul-mi",
+    "title": "The Gentle Nurturer",
+    "tagline": "Steady growth shaped by care, patience, and emotional awareness.",
+    "keywords": [
+      "patience",
+      "nurturing",
+      "stability",
+      "harmony"
+    ],
+    "strengths": [
+      "Creates calm, supportive environments",
+      "Builds progress steadily",
+      "Strong emotional sensitivity"
+    ],
+    "pitfalls": [
+      "May delay action to keep peace",
+      "Can absorb others’ burdens",
+      "Slow to pivot under pressure"
+    ],
+    "adviceTone": "Warm and stabilizing. Focuses on boundaries and small, reliable steps.",
+    "animal": {
+      "name": "Wood Goat",
+      "image": "/animals/eul-mi.png",
+      "traits": [
+        "Gentle persistence",
+        "Harmony-seeking nature",
+        "Steady emotional presence"
+      ]
+    }
+  },
+  "byeong-sin": {
+    "id": "byeong-sin",
+    "title": "The Energetic Explorer",
+    "tagline": "Bright curiosity expressed through bold experimentation.",
+    "keywords": [
+      "curiosity",
+      "expression",
+      "experimentation",
+      "confidence"
+    ],
+    "strengths": [
+      "Fast learner through trial and error",
+      "Brings energy to teams",
+      "Connects ideas creatively"
+    ],
+    "pitfalls": [
+      "Can scatter focus",
+      "May chase novelty over depth",
+      "Risk of overstimulation"
+    ],
+    "adviceTone": "Upbeat and focusing. Encourages choosing one clear direction to commit to.",
+    "animal": {
+      "name": "Fire Monkey",
+      "image": "/animals/byeong-sin.png",
+      "traits": [
+        "Playful problem-solving",
+        "Quick experimentation",
+        "High expressive energy"
+      ]
+    }
+  },
+  "jeong-yu": {
+    "id": "jeong-yu",
+    "title": "The Warm Refiner",
+    "tagline": "Soft intensity that improves, polishes, and completes.",
+    "keywords": [
+      "refinement",
+      "quality",
+      "clarity",
+      "completion"
+    ],
+    "strengths": [
+      "Excellent attention to detail",
+      "Strong sense of quality",
+      "Clear communication when prepared"
+    ],
+    "pitfalls": [
+      "May over-polish and delay",
+      "Can be self-critical",
+      "Sensitive to disorder"
+    ],
+    "adviceTone": "Supportive and precise. Encourages progress without perfection paralysis.",
+    "animal": {
+      "name": "Fire Rooster",
+      "image": "/animals/jeong-yu.png",
+      "traits": [
+        "Detail-oriented perception",
+        "Quality-focused execution",
+        "Prefers clear standards"
+      ]
+    }
+  },
+  "mu-sul": {
+    "id": "mu-sul",
+    "title": "The Grounded Guardian",
+    "tagline": "Stable courage that protects values and people.",
+    "keywords": [
+      "protection",
+      "integrity",
+      "stability",
+      "responsibility"
+    ],
+    "strengths": [
+      "Reliable in difficult situations",
+      "Strong sense of duty",
+      "Provides steady leadership"
+    ],
+    "pitfalls": [
+      "Can become stubborn under stress",
+      "Carries burdens alone",
+      "Difficulty relaxing after conflict"
+    ],
+    "adviceTone": "Honest and steady. Emphasizes boundaries and long-term stability.",
+    "animal": {
+      "name": "Earth Dog",
+      "image": "/animals/mu-sul.png",
+      "traits": [
+        "Protective instincts",
+        "Value-driven decisions",
+        "Dependable presence"
+      ]
+    }
+  },
+  "gi-hae": {
+    "id": "gi-hae",
+    "title": "The Quiet Restorer",
+    "tagline": "Gentle stability that restores balance and safety.",
+    "keywords": [
+      "comfort",
+      "restoration",
+      "patience",
+      "support"
+    ],
+    "strengths": [
+      "Creates emotional safety",
+      "Patient under uncertainty",
+      "Calms stress and tension"
+    ],
+    "pitfalls": [
+      "May avoid hard conversations",
+      "Can over-give",
+      "Needs clear boundaries"
+    ],
+    "adviceTone": "Warm and reassuring. Focuses on rest, boundaries, and steady recovery.",
+    "animal": {
+      "name": "Earth Pig",
+      "image": "/animals/gi-hae.png",
+      "traits": [
+        "Comfort-seeking",
+        "Gentle resilience",
+        "Prefers calm environments"
+      ]
+    }
+  },
+  "gyeong-ja": {
+    "id": "gyeong-ja",
+    "title": "The Precise Starter",
+    "tagline": "Clear judgment that initiates action without hesitation.",
+    "keywords": [
+      "decisiveness",
+      "clarity",
+      "discipline",
+      "initiative"
+    ],
+    "strengths": [
+      "Quick, firm decision-making",
+      "High standards",
+      "Strong control in uncertainty"
+    ],
+    "pitfalls": [
+      "May sound too blunt",
+      "Can over-control outcomes",
+      "Difficulty softening communication"
+    ],
+    "adviceTone": "Direct and structured. Offers clear options and next steps.",
+    "animal": {
+      "name": "Metal Rat",
+      "image": "/animals/gyeong-ja.png",
+      "traits": [
+        "Tactical awareness",
+        "Efficient execution",
+        "Resource-focused thinking"
+      ]
+    }
+  },
+  "sin-chuk": {
+    "id": "sin-chuk",
+    "title": "The Structured Pillar",
+    "tagline": "Strength built through patience, order, and consistency.",
+    "keywords": [
+      "discipline",
+      "structure",
+      "endurance",
+      "reliability"
+    ],
+    "strengths": [
+      "Exceptional persistence",
+      "Builds strong systems",
+      "Stable under pressure"
+    ],
+    "pitfalls": [
+      "Resists change once set",
+      "Carries responsibility too long",
+      "Slow to adjust"
+    ],
+    "adviceTone": "Steady and practical. Encourages flexibility within structure.",
+    "animal": {
+      "name": "Metal Ox",
+      "image": "/animals/sin-chuk.png",
+      "traits": [
+        "Patient endurance",
+        "Systematic execution",
+        "Reliable strength"
+      ]
+    }
+  },
+  "im-in": {
+    "id": "im-in",
+    "title": "The Adaptive Leader",
+    "tagline": "Deep emotional intelligence paired with decisive courage.",
+    "keywords": [
+      "leadership",
+      "adaptability",
+      "depth",
+      "courage"
+    ],
+    "strengths": [
+      "Strong presence in crises",
+      "Balances emotion and action",
+      "Protective leadership"
+    ],
+    "pitfalls": [
+      "Can become intense",
+      "May take on too much",
+      "Needs recovery time"
+    ],
+    "adviceTone": "Bold but grounding. Encourages pacing and clear boundaries.",
+    "animal": {
+      "name": "Water Tiger",
+      "image": "/animals/im-in.png",
+      "traits": [
+        "Protective courage",
+        "Fast adaptive response",
+        "Emotionally aware leadership"
+      ]
+    }
+  },
+  "gye-myo": {
+    "id": "gye-myo",
+    "title": "The Subtle Sensor",
+    "tagline": "Quiet intuition that detects what others miss.",
+    "keywords": [
+      "intuition",
+      "sensitivity",
+      "timing",
+      "discernment"
+    ],
+    "strengths": [
+      "Reads emotional undercurrents",
+      "Strong sense of timing",
+      "Creates calm clarity"
+    ],
+    "pitfalls": [
+      "May hesitate to avoid discomfort",
+      "Absorbs emotions too deeply",
+      "Needs firmer boundaries"
+    ],
+    "adviceTone": "Gentle and clarifying. Focuses on practical steps with emotional safety.",
+    "animal": {
+      "name": "Water Rabbit",
+      "image": "/animals/gye-myo.png",
+      "traits": [
+        "Sensitive perception",
+        "Calm movement",
+        "Strong intuitive timing"
+      ]
+    }
+  },
+  "gap-jin": {
+    "id": "gap-jin",
+    "title": "The Expansion Planner",
+    "tagline": "Growth-focused vision that builds scalable foundations.",
+    "keywords": [
+      "vision",
+      "growth",
+      "planning",
+      "structure"
+    ],
+    "strengths": [
+      "Strong long-term planning",
+      "Builds systems for expansion",
+      "Confident strategic leadership"
+    ],
+    "pitfalls": [
+      "Can over-control growth",
+      "May push too hard",
+      "Needs refinement pauses"
+    ],
+    "adviceTone": "Strategic and pragmatic. Emphasizes pacing growth and system health.",
+    "animal": {
+      "name": "Wood Dragon",
+      "image": "/animals/gap-jin.png",
+      "traits": [
+        "Expansion-driven momentum",
+        "System-building instincts",
+        "Big-picture thinking"
+      ]
+    }
+  },
+  "eul-sa": {
+    "id": "eul-sa",
+    "title": "The Quiet Strategist",
+    "tagline": "Careful planning guided by timing and efficiency.",
+    "keywords": [
+      "strategy",
+      "timing",
+      "precision",
+      "adaptability"
+    ],
+    "strengths": [
+      "Plans effectively with good timing",
+      "Moves efficiently with minimal waste",
+      "Learns quickly through observation"
+    ],
+    "pitfalls": [
+      "May overthink before acting",
+      "Can delay decisions",
+      "Prefers control when uncertain"
+    ],
+    "adviceTone": "Calm and option-based. Encourages timely, low-risk action.",
+    "animal": {
+      "name": "Wood Snake",
+      "image": "/animals/eul-sa.png",
+      "traits": [
+        "Observes before acting",
+        "Efficiency-focused movement",
+        "Strategic patience"
+      ]
+    }
+  },
+  "byeong-o": {
+    "id": "byeong-o",
+    "title": "The Radiant Accelerator",
+    "tagline": "Bright energy that thrives on action, visibility, and forward motion.",
+    "keywords": [
+      "momentum",
+      "initiative",
+      "visibility",
+      "drive"
+    ],
+    "strengths": [
+      "Quick to initiate movement",
+      "Energizes people and environments",
+      "Comfortable taking the lead"
+    ],
+    "pitfalls": [
+      "Can rush without assessing risks",
+      "May burn energy too quickly",
+      "Impatience with slow processes"
+    ],
+    "adviceTone": "Motivating and grounding. Encourages pacing energy and choosing direction before acceleration.",
+    "animal": {
+      "name": "Fire Horse",
+      "image": "/animals/byeong-o.png",
+      "traits": [
+        "Fast-moving initiative",
+        "High outward energy",
+        "Thrives in dynamic settings"
+      ]
+    }
+  },
+  "jeong-mi": {
+    "id": "jeong-mi",
+    "title": "The Gentle Flame",
+    "tagline": "Quiet warmth that nurtures growth and emotional safety.",
+    "keywords": [
+      "care",
+      "patience",
+      "warmth",
+      "empathy"
+    ],
+    "strengths": [
+      "Creates supportive environments",
+      "Strong emotional awareness",
+      "Steady dedication to people and goals"
+    ],
+    "pitfalls": [
+      "May suppress personal needs",
+      "Avoids confrontation too long",
+      "Emotional fatigue from over-giving"
+    ],
+    "adviceTone": "Reassuring and supportive. Focuses on boundaries and sustainable giving.",
+    "animal": {
+      "name": "Fire Goat",
+      "image": "/animals/jeong-mi.png",
+      "traits": [
+        "Gentle emotional presence",
+        "Nurturing instincts",
+        "Prefers harmony over conflict"
+      ]
+    }
+  },
+  "mu-sin": {
+    "id": "mu-sin",
+    "title": "The Strategic Stabilizer",
+    "tagline": "Grounded thinking that adapts quickly to changing situations.",
+    "keywords": [
+      "strategy",
+      "adaptability",
+      "control",
+      "resilience"
+    ],
+    "strengths": [
+      "Balances flexibility with structure",
+      "Handles uncertainty with calm judgment",
+      "Strong situational awareness"
+    ],
+    "pitfalls": [
+      "Can overanalyze options",
+      "May hesitate before acting",
+      "Difficulty trusting spontaneous decisions"
+    ],
+    "adviceTone": "Calm and analytical. Helps narrow options and move decisively.",
+    "animal": {
+      "name": "Earth Monkey",
+      "image": "/animals/mu-sin.png",
+      "traits": [
+        "Adaptive problem-solving",
+        "Grounded curiosity",
+        "Strategic flexibility"
+      ]
+    }
+  },
+  "gi-yu": {
+    "id": "gi-yu",
+    "title": "The Careful Refiner",
+    "tagline": "Quiet discipline focused on improvement and reliability.",
+    "keywords": [
+      "refinement",
+      "discipline",
+      "precision",
+      "consistency"
+    ],
+    "strengths": [
+      "Strong eye for detail",
+      "Reliable follow-through",
+      "Improves systems steadily"
+    ],
+    "pitfalls": [
+      "Can become overly cautious",
+      "Perfectionism may slow progress",
+      "Sensitive to criticism"
+    ],
+    "adviceTone": "Clear and constructive. Encourages progress over perfection.",
+    "animal": {
+      "name": "Earth Rooster",
+      "image": "/animals/gi-yu.png",
+      "traits": [
+        "Detail-focused perception",
+        "Disciplined execution",
+        "Values order and clarity"
+      ]
+    }
+  },
+  "gyeong-sul": {
+    "id": "gyeong-sul",
+    "title": "The Iron Guardian",
+    "tagline": "Firm principles that protect stability and integrity.",
+    "keywords": [
+      "integrity",
+      "protection",
+      "discipline",
+      "authority"
+    ],
+    "strengths": [
+      "Strong moral boundaries",
+      "Reliable under pressure",
+      "Protects people and systems"
+    ],
+    "pitfalls": [
+      "May appear rigid",
+      "Difficulty softening stance",
+      "Can carry burdens alone"
+    ],
+    "adviceTone": "Firm and stabilizing. Encourages flexibility without compromising values.",
+    "animal": {
+      "name": "Metal Dog",
+      "image": "/animals/gyeong-sul.png",
+      "traits": [
+        "Protective loyalty",
+        "Strong boundaries",
+        "Value-driven action"
+      ]
+    }
+  },
+  "sin-hae": {
+    "id": "sin-hae",
+    "title": "The Quiet Regulator",
+    "tagline": "Subtle control that maintains balance beneath the surface.",
+    "keywords": [
+      "restraint",
+      "balance",
+      "discernment",
+      "self-control"
+    ],
+    "strengths": [
+      "Strong internal discipline",
+      "Good at regulating excess",
+      "Maintains emotional distance when needed"
+    ],
+    "pitfalls": [
+      "May suppress feelings",
+      "Difficulty asking for support",
+      "Can appear emotionally distant"
+    ],
+    "adviceTone": "Measured and reassuring. Encourages healthy expression and release.",
+    "animal": {
+      "name": "Metal Pig",
+      "image": "/animals/sin-hae.png",
+      "traits": [
+        "Calm restraint",
+        "Quiet endurance",
+        "Maintains internal balance"
+      ]
+    }
+  },
+  "im-ja": {
+    "id": "im-ja",
+    "title": "The Strategic Survivor",
+    "tagline": "Sharp instincts combined with long-term awareness.",
+    "keywords": [
+      "instinct",
+      "adaptability",
+      "resourcefulness",
+      "foresight"
+    ],
+    "strengths": [
+      "Quick situational judgment",
+      "Strong survival instincts",
+      "Plans ahead under uncertainty"
+    ],
+    "pitfalls": [
+      "May become overly cautious",
+      "Can hoard emotional resources",
+      "Trust issues under stress"
+    ],
+    "adviceTone": "Practical and grounding. Focuses on security without isolation.",
+    "animal": {
+      "name": "Water Rat",
+      "image": "/animals/im-ja.png",
+      "traits": [
+        "Resource-aware instincts",
+        "Quick adaptability",
+        "Alert perception"
+      ]
+    }
+  },
+  "gye-chuk": {
+    "id": "gye-chuk",
+    "title": "The Silent Builder",
+    "tagline": "Slow, persistent progress shaped by inner resolve.",
+    "keywords": [
+      "endurance",
+      "patience",
+      "foundation",
+      "consistency"
+    ],
+    "strengths": [
+      "Exceptional perseverance",
+      "Builds stable foundations",
+      "Reliable long-term effort"
+    ],
+    "pitfalls": [
+      "Resistance to change",
+      "Emotional suppression",
+      "Slow response to shifting needs"
+    ],
+    "adviceTone": "Steady and reassuring. Encourages flexibility alongside persistence.",
+    "animal": {
+      "name": "Water Ox",
+      "image": "/animals/gye-chuk.png",
+      "traits": [
+        "Quiet endurance",
+        "Steady effort",
+        "Long-term focus"
+      ]
+    }
+  },
+  "gap-in": {
+    "id": "gap-in",
+    "title": "The Growth Initiator",
+    "tagline": "Bold expansion driven by courage and instinct.",
+    "keywords": [
+      "growth",
+      "courage",
+      "initiative",
+      "drive"
+    ],
+    "strengths": [
+      "Strong leadership energy",
+      "Comfortable starting new paths",
+      "Protective and decisive"
+    ],
+    "pitfalls": [
+      "Can push too hard",
+      "Risk of impatience",
+      "May overlook softer signals"
+    ],
+    "adviceTone": "Encouraging and focusing. Helps pace growth and channel power wisely.",
+    "animal": {
+      "name": "Wood Tiger",
+      "image": "/animals/gap-in.png",
+      "traits": [
+        "Bold initiative",
+        "Protective leadership",
+        "Instinct-driven action"
+      ]
+    }
+  },
+  "eul-myo": {
+    "id": "eul-myo",
+    "title": "The Gentle Observer",
+    "tagline": "Subtle awareness that maintains harmony and timing.",
+    "keywords": [
+      "sensitivity",
+      "timing",
+      "harmony",
+      "intuition"
+    ],
+    "strengths": [
+      "Notices emotional nuance",
+      "Strong sense of timing",
+      "Creates calm environments"
+    ],
+    "pitfalls": [
+      "Avoids confrontation",
+      "Difficulty asserting needs",
+      "Can withdraw under pressure"
+    ],
+    "adviceTone": "Gentle and clarifying. Encourages small acts of self-assertion.",
+    "animal": {
+      "name": "Wood Rabbit",
+      "image": "/animals/eul-myo.png",
+      "traits": [
+        "Sensitive perception",
+        "Harmony-seeking",
+        "Soft but aware"
+      ]
+    }
+  },
+  "byeong-jin": {
+    "id": "byeong-jin",
+    "title": "The Visionary Catalyst",
+    "tagline": "Transformational energy that reshapes direction.",
+    "keywords": [
+      "vision",
+      "transformation",
+      "leadership",
+      "momentum"
+    ],
+    "strengths": [
+      "Big-picture thinking",
+      "Strong change leadership",
+      "Inspires movement in others"
+    ],
+    "pitfalls": [
+      "Can overwhelm environments",
+      "May neglect details",
+      "Burnout after intense pushes"
+    ],
+    "adviceTone": "Visionary but grounding. Focuses on sustainable transformation.",
+    "animal": {
+      "name": "Fire Dragon",
+      "image": "/animals/byeong-jin.png",
+      "traits": [
+        "Transformational force",
+        "Vision-driven movement",
+        "Charismatic presence"
+      ]
+    }
+  },
+  "jeong-sa": {
+    "id": "jeong-sa",
+    "title": "The Focused Alchemist",
+    "tagline": "Refined insight applied with precision and patience.",
+    "keywords": [
+      "focus",
+      "precision",
+      "insight",
+      "self-mastery"
+    ],
+    "strengths": [
+      "Deep concentration",
+      "Strong intuitive intelligence",
+      "Efficient use of energy"
+    ],
+    "pitfalls": [
+      "May over-isolate",
+      "Tendency to overthink",
+      "High internal pressure"
+    ],
+    "adviceTone": "Calm and option-based. Encourages balance between focus and openness.",
+    "animal": {
+      "name": "Fire Snake",
+      "image": "/animals/jeong-sa.png",
+      "traits": [
+        "Focused observation",
+        "Precise movement",
+        "Energy efficiency"
+      ]
+    }
+  },
+  "mu-o": {
+    "id": "mu-o",
+    "title": "The Steady Driver",
+    "tagline": "Grounded momentum that pushes forward without panic.",
+    "keywords": [
+      "stability",
+      "momentum",
+      "control",
+      "endurance"
+    ],
+    "strengths": [
+      "Strong physical and mental stamina",
+      "Reliable forward movement",
+      "Keeps direction under pressure"
+    ],
+    "pitfalls": [
+      "Can resist change",
+      "May suppress emotions",
+      "Overworks without rest"
+    ],
+    "adviceTone": "Grounded and practical. Encourages rest cycles and adaptability.",
+    "animal": {
+      "name": "Earth Horse",
+      "image": "/animals/mu-o.png",
+      "traits": [
+        "Steady endurance",
+        "Controlled momentum",
+        "Resilient drive"
+      ]
+    }
+  },
+  "gi-mi": {
+    "id": "gi-mi",
+    "title": "The Quiet Supporter",
+    "tagline": "Stable presence that sustains people and systems.",
+    "keywords": [
+      "support",
+      "stability",
+      "patience",
+      "care"
+    ],
+    "strengths": [
+      "Reliable emotional support",
+      "Long-term consistency",
+      "Creates safe environments"
+    ],
+    "pitfalls": [
+      "May neglect personal needs",
+      "Avoids confrontation",
+      "Emotional exhaustion"
+    ],
+    "adviceTone": "Warm and steady. Encourages self-care and clear limits.",
+    "animal": {
+      "name": "Earth Goat",
+      "image": "/animals/gi-mi.png",
+      "traits": [
+        "Supportive endurance",
+        "Gentle persistence",
+        "Calm presence"
+      ]
+    }
+  },
+  "gyeong-sin": {
+    "id": "gyeong-sin",
+    "title": "The Tactical Executor",
+    "tagline": "Sharp judgment applied with speed and accuracy.",
+    "keywords": [
+      "tactics",
+      "decisiveness",
+      "clarity",
+      "execution"
+    ],
+    "strengths": [
+      "Quick, accurate decisions",
+      "Strong situational control",
+      "Efficient problem-solving"
+    ],
+    "pitfalls": [
+      "Can appear too blunt",
+      "May rush others",
+      "Low tolerance for inefficiency"
+    ],
+    "adviceTone": "Direct and precise. Encourages clarity without unnecessary force.",
+    "animal": {
+      "name": "Metal Monkey",
+      "image": "/animals/gyeong-sin.png",
+      "traits": [
+        "Tactical thinking",
+        "Fast execution",
+        "Sharp adaptability"
+      ]
+    }
+  },
+  "sin-yu": {
+    "id": "sin-yu",
+    "title": "The Silent Perfectionist",
+    "tagline": "Refined standards maintained with quiet discipline.",
+    "keywords": [
+      "precision",
+      "standards",
+      "refinement",
+      "self-control"
+    ],
+    "strengths": [
+      "High internal standards",
+      "Strong self-discipline",
+      "Consistent quality output"
+    ],
+    "pitfalls": [
+      "Excessive self-criticism",
+      "Difficulty relaxing",
+      "Delayed completion"
+    ],
+    "adviceTone": "Supportive and simplifying. Focuses on progress over flawlessness.",
+    "animal": {
+      "name": "Metal Rooster",
+      "image": "/animals/sin-yu.png",
+      "traits": [
+        "Precision-focused",
+        "Refined execution",
+        "Order-driven mindset"
+      ]
+    }
+  },
+  "im-sul": {
+    "id": "im-sul",
+    "title": "The Enduring Watcher",
+    "tagline": "Deep resilience that holds firm through uncertainty.",
+    "keywords": [
+      "resilience",
+      "patience",
+      "endurance",
+      "depth"
+    ],
+    "strengths": [
+      "Strong emotional depth",
+      "Endures pressure quietly",
+      "Long-term reliability"
+    ],
+    "pitfalls": [
+      "May isolate under stress",
+      "Difficulty expressing needs",
+      "Slow recovery after strain"
+    ],
+    "adviceTone": "Reassuring and grounding. Encourages gradual release and support.",
+    "animal": {
+      "name": "Water Dog",
+      "image": "/animals/im-sul.png",
+      "traits": [
+        "Loyal endurance",
+        "Quiet strength",
+        "Protective patience"
+      ]
+    }
+  },
+  "gye-hae": {
+    "id": "gye-hae",
+    "title": "The Subtle Reservoir",
+    "tagline": "Hidden depth that restores and sustains.",
+    "keywords": [
+      "depth",
+      "restoration",
+      "sensitivity",
+      "intuition"
+    ],
+    "strengths": [
+      "Deep emotional intelligence",
+      "Strong restorative capacity",
+      "Understands unspoken needs"
+    ],
+    "pitfalls": [
+      "Emotional overload",
+      "Boundary issues",
+      "Tendency to withdraw"
+    ],
+    "adviceTone": "Gentle and grounding. Focuses on boundaries and energy protection.",
+    "animal": {
+      "name": "Water Pig",
+      "image": "/animals/gye-hae.png",
+      "traits": [
+        "Deep emotional reserves",
+        "Restorative presence",
+        "Sensitive awareness"
+      ]
+    }
+  }
+}
