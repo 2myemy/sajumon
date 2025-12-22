@@ -1,0 +1,7 @@
+{
+  "name": "sajumon-root",
+  "private": true,
+  "scripts": {
+    "heroku-postbuild": "cd api && npm install && npm run build"
+  }
+}
