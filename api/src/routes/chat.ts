@@ -19,7 +19,6 @@ type Body = z.infer<typeof BodySchema>;
 
 function setSSEHeaders(res: Response) {
   res.status(200);
-  
   res.setHeader(
     "Access-Control-Allow-Origin",
     "https://sajumon.netlify.app"
@@ -28,7 +27,6 @@ function setSSEHeaders(res: Response) {
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
-  // flushHeaders는 express 타입에 없을 수 있어서 안전 호출
   (res as any).flushHeaders?.();
 }
 
@@ -159,7 +157,6 @@ chatRouter.post("/", async (req: Request, res: Response) => {
       }
     }
 
-    // 스트림이 그냥 끝났으면 done
     sendEvent(res, "done", {});
     res.end();
   } catch (e: any) {
@@ -169,5 +166,4 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// ✅ CommonJS export
 export = chatRouter;
