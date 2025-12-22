@@ -1,20 +1,17 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
-
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "target": "ES2021",
-    "lib": ["ES2021"],
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "outDir": "dist",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "rootDir": "src",
-    "strict": true,
+    "outDir": "dist",
+    "verbatimModuleSyntax": true,
     "esModuleInterop": true,
+    "strict": true,
+    "lib": ["ES2022"],
     "skipLibCheck": true,
     "types": [],
     // For nodejs:
@@ -41,7 +38,6 @@
 
     // Recommended Options
     "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
