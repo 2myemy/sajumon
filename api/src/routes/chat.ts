@@ -19,6 +19,11 @@ type Body = z.infer<typeof BodySchema>;
 
 function setSSEHeaders(res: Response) {
   res.status(200);
+  
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "https://sajumon.netlify.app"
+  );
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
