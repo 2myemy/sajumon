@@ -1,1 +1,1 @@
-web: cd api && npm run build && node dist/index.js
+web: cd api && node dist/index.js
