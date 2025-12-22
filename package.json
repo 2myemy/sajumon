@@ -2,7 +2,7 @@
   "name": "sajumon-root",
   "private": true,
   "scripts": {
-    "heroku-postbuild": "cd api && npm install && npm run build"
+    "heroku-postbuild": "cd api && npm install --include=dev && npm run build"
   },
   "engines": {
     "node": "24.x",
