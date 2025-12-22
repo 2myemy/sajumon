@@ -15,7 +15,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (_, res) => {
   res.send("sajumon API running");
