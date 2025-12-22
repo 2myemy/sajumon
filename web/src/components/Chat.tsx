@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import type { CharacterProfile } from "../lib/types";
+import { streamChat } from "../lib/streamChat";
+import { getSessionId } from "../lib/session";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -10,10 +12,11 @@ export default function Chat({
   profile: CharacterProfile | null;
   isReady: boolean;
 }) {
+  const [isStreaming, setIsStreaming] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content: "Generate your Ganji first — then we can chat.",
+      content: "Hi, how can I help you today?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -61,7 +64,6 @@ export default function Chat({
     );
   }
 
-  // ✅ ready 상태면 정상 chat
   return (
     <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
       <div className="mb-3">
@@ -93,35 +95,79 @@ export default function Chat({
 
       <form
         className="mt-3 flex gap-2"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           const text = input.trim();
-          if (!text) return;
+          if (!text || isStreaming) return;
 
+          setIsStreaming(true);
+          setInput("");
+
+          // ✅ history는 "요청 직전까지의 메시지"를 최근 N개만 보내기
+          const historyToSend: Msg[] = messages.slice(-10);
+
+          // ✅ UI에 user + 빈 assistant 먼저 넣기
           setMessages((prev) => [
             ...prev,
             { role: "user", content: text },
-            {
-              role: "assistant",
-              content:
-                "Got it. (Once the backend is connected, a real model response will appear here.)",
-            },
+            { role: "assistant", content: "" },
           ]);
-          setInput("");
+
+          const sessionId = getSessionId();
+          let assistantText = "";
+
+          await streamChat({
+            sessionId,
+            archetypeId: profile.id, // ✅ "gye-hae" 같은 값
+            lang: "en", // ✅ 일단 en 고정. 필요하면 토글 추가 가능
+            message: text,
+            history: historyToSend,
+            onToken: (t) => {
+              assistantText += t;
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (next[lastIdx]?.role === "assistant") {
+                  next[lastIdx] = { role: "assistant", content: assistantText };
+                }
+                return next;
+              });
+            },
+            onDone: () => {
+              setIsStreaming(false);
+            },
+            onError: (err) => {
+              setIsStreaming(false);
+              setMessages((prev) => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (next[lastIdx]?.role === "assistant") {
+                  next[lastIdx] = {
+                    role: "assistant",
+                    content: `Error: ${err}`,
+                  };
+                } else {
+                  next.push({ role: "assistant", content: `Error: ${err}` });
+                }
+                return next;
+              });
+            },
+          });
         }}
       >
         <input
           className="flex-1 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
           value={input}
+          disabled={isStreaming}
           onChange={(e) => setInput(e.target.value)}
           placeholder={placeholder}
         />
         <button
           type="submit"
-          disabled={!input.trim()}
+          disabled={!input.trim() || isStreaming}
           className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 hover:opacity-90 disabled:opacity-50"
         >
-          Send
+          {isStreaming ? "..." : "Send"}
         </button>
       </form>
     </section>
@@ -142,7 +188,12 @@ function AssistantBubble({
   return (
     <div className="flex items-start gap-3">
       <div className="mt-1 h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5">
-        <img src={avatarSrc} alt={avatarAlt} className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={avatarSrc}
+          alt={avatarAlt}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
       </div>
 
       <div className="max-w-[85%]">

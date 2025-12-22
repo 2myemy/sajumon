@@ -6,7 +6,6 @@ const app = express();
 
 const allowed = [
   "http://localhost:5173",
-  "http://localhost:3000",
   "https://sajumon.netlify.app"
 ];
 
@@ -25,7 +24,7 @@ app.get("/", (_, res) => {
 app.get("/health", (req, res) => res.status(200).json({ ok: true }));
 app.use("/api/chat", chatRoutes);
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
 });
