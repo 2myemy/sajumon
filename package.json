@@ -3,5 +3,9 @@
   "private": true,
   "scripts": {
     "heroku-postbuild": "cd api && npm install && npm run build"
+  },
+  "engines": {
+    "node": "24.x",
+    "npm": "11.x"
   }
 }
