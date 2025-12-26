@@ -11,7 +11,9 @@ const BodySchema = z.object({
   lang: z.enum(["en", "ko"]),
   message: z.string().min(1),
   history: z
-    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+    .array(
+      z.object({ role: z.enum(["user", "assistant"]), content: z.string() })
+    )
     .default([]),
 });
 
@@ -19,10 +21,7 @@ type Body = z.infer<typeof BodySchema>;
 
 function setSSEHeaders(res: Response) {
   res.status(200);
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    "https://sajumon.netlify.app"
-  );
+  res.setHeader("Access-Control-Allow-Origin", "https://sajumon.netlify.app");
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
@@ -96,12 +95,22 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Invalid body" });
   }
 
+  console.log("[chat] start");
   setSSEHeaders(res);
+  console.log("[chat] headers set");
 
   //test
-  sendEvent(res, "token", { token: "" }); // 첫 바이트
-  const keepAlive = setInterval(() => res.write(`: ping\n\n`), 15000);
+  // 1) 연결 열리자마자 한 번 보내서 bytes 확보
+  res.write(`: connected\n\n`);
+  console.log("[chat] connected sent");
+
+  // 2) 15초마다 keep-alive (Heroku idle 방지)
+  const keepAlive = setInterval(() => {
+    res.write(`: ping ${Date.now()}\n\n`);
+  }, 15000);
+
   req.on("close", () => clearInterval(keepAlive));
+  res.on("close", () => clearInterval(keepAlive));
 
   const ac = new AbortController();
   req.on("close", () => ac.abort());
@@ -117,7 +126,10 @@ chatRouter.post("/", async (req: Request, res: Response) => {
             ? "너는 친절하고 정확한 상담사다. 짧고 명확하게 답한다."
             : "You are a helpful assistant. Be concise and clear.",
       },
-      ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      ...history.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
       { role: "user" as const, content: message },
     ];
 
@@ -135,6 +147,9 @@ chatRouter.post("/", async (req: Request, res: Response) => {
       }),
       signal: ac.signal,
     });
+    console.log("[chat] openai status", openaiRes.status);
+
+    console.log("[chat] begin stream loop");
 
     if (!openaiRes.ok || !openaiRes.body) {
       const errText = await openaiRes.text().catch(() => "");
@@ -145,7 +160,9 @@ chatRouter.post("/", async (req: Request, res: Response) => {
       return;
     }
 
-    for await (const evt of iterateOpenAISSE(openaiRes.body as unknown as ReadableStream<Uint8Array>)) {
+    for await (const evt of iterateOpenAISSE(
+      openaiRes.body as unknown as ReadableStream<Uint8Array>
+    )) {
       const e = evt as OpenAIStreamEvent;
 
       if (e.type === "response.output_text.delta") {
