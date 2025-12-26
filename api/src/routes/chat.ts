@@ -98,6 +98,11 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 
   setSSEHeaders(res);
 
+  //test
+  sendEvent(res, "token", { token: "" }); // 첫 바이트
+  const keepAlive = setInterval(() => res.write(`: ping\n\n`), 15000);
+  req.on("close", () => clearInterval(keepAlive));
+
   const ac = new AbortController();
   req.on("close", () => ac.abort());
 
