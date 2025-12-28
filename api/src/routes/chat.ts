@@ -1,10 +1,13 @@
 // src/routes/chat.ts
-import type { Request, Response } from "express";
 import express from "express";
+import type { Request, Response } from "express";
 import { z } from "zod";
 
 const chatRouter = express.Router();
 
+/**
+ * ✅ Request body validation
+ */
 const BodySchema = z.object({
   sessionId: z.string().min(1),
   archetypeId: z.string().min(1),
@@ -12,24 +15,56 @@ const BodySchema = z.object({
   message: z.string().min(1),
   history: z
     .array(
-      z.object({ role: z.enum(["user", "assistant"]), content: z.string() })
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      })
     )
     .default([]),
 });
 
 type Body = z.infer<typeof BodySchema>;
 
-function setSSEHeaders(res: Response) {
-  res.status(200);
-  res.setHeader("Access-Control-Allow-Origin", "https://sajumon.netlify.app");
-  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  (res as any).flushHeaders?.();
-}
+const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "https://sajumon.netlify.app";
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
+const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "450");
 
+/**
+ * ✅ SSE helpers
+ */
 type SSEEventName = "token" | "done" | "error";
+
+function sseInit(req: Request, res: Response) {
+  // Heroku idle 방지 + 프록시 버퍼링 방지
+  res.writeHead(200, {
+    "Access-Control-Allow-Origin": WEB_ORIGIN,
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  // Socket keep-alive (안전장치)
+  req.socket.setTimeout(0);
+  req.socket.setNoDelay(true);
+  req.socket.setKeepAlive(true);
+
+  res.flushHeaders?.();
+
+  // 첫 바이트를 즉시 보내서 “연결 활성화”
+  res.write(`: connected ${Date.now()}\n\n`);
+
+  // 15초마다 ping (Heroku H15 idle 방지)
+  const keepAlive = setInterval(() => {
+    res.write(`: ping ${Date.now()}\n\n`);
+  }, 15000);
+
+  const cleanup = () => clearInterval(keepAlive);
+  req.on("close", cleanup);
+  res.on("close", cleanup);
+
+  return cleanup;
+}
 
 function sendEvent(res: Response, event: SSEEventName, data: unknown) {
   res.write(`event: ${event}\n`);
@@ -45,10 +80,11 @@ function safeJsonParse<T = any>(s: string): T | null {
 }
 
 /**
- * OpenAI SSE 스트림을 `\n\n` 단위로 나눠 `data:` 라인만 파싱해서 yield
+ * ✅ Parse OpenAI SSE stream (data: ... \n\n)
+ * - yields parsed JSON objects (or { type:"done" })
  */
-async function* iterateOpenAISSE(readableStream: ReadableStream<Uint8Array>) {
-  const reader = readableStream.getReader();
+async function* iterateOpenAISSE(body: ReadableStream<Uint8Array>) {
+  const reader = body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
 
@@ -58,11 +94,11 @@ async function* iterateOpenAISSE(readableStream: ReadableStream<Uint8Array>) {
 
     buffer += decoder.decode(value, { stream: true });
 
-    const chunks = buffer.split("\n\n");
-    buffer = chunks.pop() ?? "";
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
 
-    for (const chunk of chunks) {
-      const dataLines = chunk
+    for (const part of parts) {
+      const dataLines = part
         .split("\n")
         .filter((l) => l.startsWith("data:"))
         .map((l) => l.slice("data:".length).trim());
@@ -82,41 +118,39 @@ async function* iterateOpenAISSE(readableStream: ReadableStream<Uint8Array>) {
   }
 }
 
-type OpenAIStreamEvent =
-  | { type: "response.output_text.delta"; delta?: string }
-  | { type: "response.completed" }
-  | { type: "response.failed"; error?: { message?: string } }
-  | { type: "error"; error?: { message?: string } }
-  | { type: string; [k: string]: any };
+/**
+ * ✅ OPTIONS (CORS preflight)
+ */
+chatRouter.options("/", (_req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", WEB_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.sendStatus(204);
+});
 
+/**
+ * ✅ POST /api/chat (SSE)
+ */
 chatRouter.post("/", async (req: Request, res: Response) => {
-  const parsed = BodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: "Invalid body" });
-  }
-
   console.log("[chat] start");
-  setSSEHeaders(res);
-  console.log("[chat] headers set");
 
-  //test
-  // 1) 연결 열리자마자 한 번 보내서 bytes 확보
-  res.write(`: connected\n\n`);
-  console.log("[chat] connected sent");
+  const parsed = BodySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
 
-  // 2) 15초마다 keep-alive (Heroku idle 방지)
-  const keepAlive = setInterval(() => {
-    res.write(`: ping ${Date.now()}\n\n`);
-  }, 15000);
-
-  req.on("close", () => clearInterval(keepAlive));
-  res.on("close", () => clearInterval(keepAlive));
+  const cleanupSSE = sseInit(req, res);
+  console.log("[chat] sse ready");
 
   const ac = new AbortController();
   req.on("close", () => ac.abort());
 
+  // OpenAI가 오래 걸리면 그냥 끊지 말고 timeout으로 abort + error 이벤트
+  const upstreamTimeout = setTimeout(() => {
+    console.log("[chat] openai timeout -> abort");
+    ac.abort();
+  }, 45000);
+
   try {
-    const { message, history, lang, archetypeId } = parsed.data as Body;
+    const { message, history, lang } = parsed.data as Body;
 
     const input = [
       {
@@ -126,16 +160,16 @@ chatRouter.post("/", async (req: Request, res: Response) => {
             ? "너는 친절하고 정확한 상담사다. 짧고 명확하게 답한다."
             : "You are a helpful assistant. Be concise and clear.",
       },
-      ...history.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+      ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
       { role: "user" as const, content: message },
     ];
 
-    const maxOutputTokens = Number(
-      process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "450"
-    );
+    console.log("[chat] before openai fetch", {
+      hasKey: Boolean(process.env.OPENAI_API_KEY),
+      keyLen: (process.env.OPENAI_API_KEY ?? "").length,
+      model: OPENAI_MODEL,
+      max: MAX_OUTPUT_TOKENS,
+    });
 
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -144,64 +178,90 @@ chatRouter.post("/", async (req: Request, res: Response) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+        model: OPENAI_MODEL,
         input,
         stream: true,
-        max_output_tokens: maxOutputTokens,
+        max_output_tokens: MAX_OUTPUT_TOKENS,
       }),
       signal: ac.signal,
     });
-    console.log("[chat] openai status", openaiRes.status);
-    console.log(
-      "[chat] model",
-      process.env.OPENAI_MODEL,
-      "max",
-      process.env.OPENAI_MAX_OUTPUT_TOKENS
-    );
-    console.log(
-      "[chat] key?",
-      Boolean(process.env.OPENAI_API_KEY),
-      "len",
-      (process.env.OPENAI_API_KEY ?? "").length
-    );
 
-    console.log("[chat] begin stream loop");
+    clearTimeout(upstreamTimeout);
+    console.log("[chat] after openai fetch", openaiRes.status);
 
     if (!openaiRes.ok || !openaiRes.body) {
       const errText = await openaiRes.text().catch(() => "");
       sendEvent(res, "error", {
-        error: `OpenAI HTTP ${openaiRes.status} ${errText}`.slice(0, 500),
+        error: `OpenAI HTTP ${openaiRes.status} ${errText}`.slice(0, 800),
       });
       res.end();
+      cleanupSSE();
       return;
     }
 
-    for await (const evt of iterateOpenAISSE(
-      openaiRes.body as unknown as ReadableStream<Uint8Array>
-    )) {
-      const e = evt as OpenAIStreamEvent;
+    // Stream loop
+    for await (const evt of iterateOpenAISSE(openaiRes.body as unknown as ReadableStream<Uint8Array>)) {
+      const e: any = evt;
 
-      if (e.type === "response.output_text.delta") {
-        const delta = e.delta;
-        if (delta) sendEvent(res, "token", { token: delta });
-      } else if (e.type === "response.completed") {
+      // (디버그 원하면 주석 해제)
+      // console.log("[chat] openai evt type:", e?.type);
+
+      if (e?.type === "done") {
         sendEvent(res, "done", {});
         res.end();
+        cleanupSSE();
         return;
-      } else if (e.type === "error" || e.type === "response.failed") {
-        sendEvent(res, "error", { error: e.error?.message ?? "OpenAI error" });
+      }
+
+      // ✅ 다양한 이벤트/포맷을 폭넓게 커버 (stream parsing 흔들려도 토큰 흘려보내기)
+      const token =
+        (e?.type === "response.output_text.delta" && typeof e?.delta === "string" && e.delta) ||
+        (typeof e?.delta === "string" && e.delta) ||
+        (typeof e?.output_text_delta === "string" && e.output_text_delta) ||
+        (typeof e?.response?.output_text_delta === "string" && e.response.output_text_delta) ||
+        (typeof e?.choices?.[0]?.delta?.content === "string" && e.choices[0].delta.content) ||
+        "";
+
+      if (token) {
+        sendEvent(res, "token", { token });
+        continue;
+      }
+
+      // ✅ 종료/에러를 폭넓게 처리
+      if (e?.type === "response.completed" || e?.type === "response.complete") {
+        sendEvent(res, "done", {});
         res.end();
+        cleanupSSE();
+        return;
+      }
+
+      if (e?.type === "error" || e?.type === "response.failed") {
+        sendEvent(res, "error", { error: e?.error?.message ?? "OpenAI error" });
+        res.end();
+        cleanupSSE();
         return;
       }
     }
 
+    // 스트림이 조용히 끝난 경우
     sendEvent(res, "done", {});
     res.end();
+    cleanupSSE();
   } catch (e: any) {
-    if (e?.name === "AbortError") return;
+    clearTimeout(upstreamTimeout);
+
+    if (e?.name === "AbortError") {
+      sendEvent(res, "error", { error: "Request aborted / timeout" });
+      res.end();
+      cleanupSSE();
+      return;
+    }
+
+    console.error("[chat] server error", e?.message ?? e);
     sendEvent(res, "error", { error: e?.message ?? "server error" });
     res.end();
+    cleanupSSE();
   }
 });
 
-export = chatRouter;
+export default chatRouter;
