@@ -157,10 +157,13 @@ chatRouter.post("/", async (req: Request, res: Response) => {
         role: "system" as const,
         content:
           lang === "ko"
-            ? "너는 친절하고 정확한 상담사다. 짧고 명확하게 답한다."
-            : "You are a helpful assistant. Be concise and clear.",
+            ? "너는 친절하고 정확한 상담사다. 짧고 명확하게 답한다. 반드시 마지막에 사용자가 읽을 수 있는 짧은 답변 문장을 출력해."
+            : "You are a helpful assistant. Be concise and clear. Always output a short user-visible answer.",
       },
-      ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      ...history.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
       { role: "user" as const, content: message },
     ];
 
@@ -170,7 +173,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
       model: OPENAI_MODEL,
       max: MAX_OUTPUT_TOKENS,
     });
-console.log("[chat] before openai fetch");
+    console.log("[chat] before openai fetch");
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -182,11 +185,11 @@ console.log("[chat] before openai fetch");
         input,
         stream: true,
         max_output_tokens: MAX_OUTPUT_TOKENS,
+        text: { verbosity: "low" },
       }),
       signal: ac.signal,
     });
 
-    
     clearTimeout(upstreamTimeout);
     console.log("[chat] after openai fetch", openaiRes.status);
 
@@ -201,7 +204,9 @@ console.log("[chat] before openai fetch");
     }
 
     // Stream loop
-    for await (const evt of iterateOpenAISSE(openaiRes.body as unknown as ReadableStream<Uint8Array>)) {
+    for await (const evt of iterateOpenAISSE(
+      openaiRes.body as unknown as ReadableStream<Uint8Array>
+    )) {
       const e: any = evt;
 
       if (e?.type === "done") {
@@ -213,11 +218,15 @@ console.log("[chat] before openai fetch");
 
       // ✅ 다양한 이벤트/포맷을 폭넓게 커버 (stream parsing 흔들려도 토큰 흘려보내기)
       const token =
-        (e?.type === "response.output_text.delta" && typeof e?.delta === "string" && e.delta) ||
+        (e?.type === "response.output_text.delta" &&
+          typeof e?.delta === "string" &&
+          e.delta) ||
         (typeof e?.delta === "string" && e.delta) ||
         (typeof e?.output_text_delta === "string" && e.output_text_delta) ||
-        (typeof e?.response?.output_text_delta === "string" && e.response.output_text_delta) ||
-        (typeof e?.choices?.[0]?.delta?.content === "string" && e.choices[0].delta.content) ||
+        (typeof e?.response?.output_text_delta === "string" &&
+          e.response.output_text_delta) ||
+        (typeof e?.choices?.[0]?.delta?.content === "string" &&
+          e.choices[0].delta.content) ||
         "";
 
       if (token) {
