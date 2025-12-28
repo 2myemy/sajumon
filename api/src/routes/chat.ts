@@ -147,7 +147,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   const upstreamTimeout = setTimeout(() => {
     console.log("[chat] openai timeout -> abort");
     ac.abort();
-  }, 45000);
+  }, 120000);
 
   try {
     const { message, history, lang } = parsed.data as Body;
@@ -170,7 +170,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
       model: OPENAI_MODEL,
       max: MAX_OUTPUT_TOKENS,
     });
-
+console.log("[chat] before openai fetch");
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -186,6 +186,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
       signal: ac.signal,
     });
 
+    
     clearTimeout(upstreamTimeout);
     console.log("[chat] after openai fetch", openaiRes.status);
 
@@ -202,9 +203,6 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     // Stream loop
     for await (const evt of iterateOpenAISSE(openaiRes.body as unknown as ReadableStream<Uint8Array>)) {
       const e: any = evt;
-
-      // (디버그 원하면 주석 해제)
-      // console.log("[chat] openai evt type:", e?.type);
 
       if (e?.type === "done") {
         sendEvent(res, "done", {});
