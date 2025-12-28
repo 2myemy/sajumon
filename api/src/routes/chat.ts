@@ -133,6 +133,10 @@ chatRouter.post("/", async (req: Request, res: Response) => {
       { role: "user" as const, content: message },
     ];
 
+    const maxOutputTokens = Number(
+      process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "450"
+    );
+
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -140,14 +144,26 @@ chatRouter.post("/", async (req: Request, res: Response) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5",
+        model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
         input,
         stream: true,
-        // metadata: { archetypeId },
+        max_output_tokens: maxOutputTokens,
       }),
       signal: ac.signal,
     });
     console.log("[chat] openai status", openaiRes.status);
+    console.log(
+      "[chat] model",
+      process.env.OPENAI_MODEL,
+      "max",
+      process.env.OPENAI_MAX_OUTPUT_TOKENS
+    );
+    console.log(
+      "[chat] key?",
+      Boolean(process.env.OPENAI_API_KEY),
+      "len",
+      (process.env.OPENAI_API_KEY ?? "").length
+    );
 
     console.log("[chat] begin stream loop");
 
