@@ -99,8 +99,6 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   setSSEHeaders(res);
   console.log("[chat] headers set");
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   //test
   // 1) 연결 열리자마자 한 번 보내서 bytes 확보
   res.write(`: connected\n\n`);
@@ -114,10 +112,6 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   req.on("close", () => clearInterval(keepAlive));
   res.on("close", () => clearInterval(keepAlive));
 
-=======
->>>>>>> parent of 388fc9b (Add test code)
-=======
->>>>>>> parent of 388fc9b (Add test code)
   const ac = new AbortController();
   req.on("close", () => ac.abort());
 
