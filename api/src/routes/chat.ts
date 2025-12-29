@@ -10,12 +10,14 @@ const chatRouter = express.Router();
  */
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "https://sajumon.netlify.app";
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
-const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "1000");
+const MAX_OUTPUT_TOKENS = Number(
+  process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "1000"
+);
 
 // 1) "stream" 시도 시, 이 시간 내에 OpenAI 응답 헤더라도 못 받으면 폴백
 const STREAM_HEADER_TIMEOUT_MS = 30000; // 30s
 // 2) 전체 OpenAI 작업 타임아웃(너무 길면 사용자 경험 안 좋음)
-const UPSTREAM_TOTAL_TIMEOUT_MS = 180000; // 3min
+const UPSTREAM_TOTAL_TIMEOUT_MS = 360000; // 3min
 
 /**
  * ===== Validation =====
@@ -144,13 +146,16 @@ function buildInput(body: Body) {
         ].join(" ")
       : [
           "You are a helpful assistant.",
-          "Answer in 3–5 short sentences and start immediately.",
+          "Answer in 3-5 short sentences and start immediately.",
           "Always output user-visible text.",
         ].join(" ");
 
   return [
     { role: "system" as const, content: system },
-    ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ...history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
     { role: "user" as const, content: message },
   ];
 }
@@ -235,7 +240,10 @@ async function tryOpenAIStreamToSSE(
 
     if (!openaiRes.ok || !openaiRes.body) {
       const t = await openaiRes.text().catch(() => "");
-      return { ok: false, reason: `OpenAI stream HTTP ${openaiRes.status} ${t}`.slice(0, 300) };
+      return {
+        ok: false,
+        reason: `OpenAI stream HTTP ${openaiRes.status} ${t}`.slice(0, 300),
+      };
     }
 
     let sentAnyToken = false;
@@ -250,10 +258,13 @@ async function tryOpenAIStreamToSSE(
 
       // ✅ 폭넓게 토큰 추출 (파서/타입 변경에 강하게)
       const token =
-        (e?.type === "response.output_text.delta" && typeof e?.delta === "string" && e.delta) ||
+        (e?.type === "response.output_text.delta" &&
+          typeof e?.delta === "string" &&
+          e.delta) ||
         (typeof e?.delta === "string" && e.delta) ||
         (typeof e?.output_text_delta === "string" && e.output_text_delta) ||
-        (typeof e?.choices?.[0]?.delta?.content === "string" && e.choices[0].delta.content) ||
+        (typeof e?.choices?.[0]?.delta?.content === "string" &&
+          e.choices[0].delta.content) ||
         "";
 
       if (token) {
@@ -268,13 +279,19 @@ async function tryOpenAIStreamToSSE(
       }
 
       if (e?.type === "error" || e?.type === "response.failed") {
-        return { ok: false, reason: e?.error?.message ?? "OpenAI stream error" };
+        return {
+          ok: false,
+          reason: e?.error?.message ?? "OpenAI stream error",
+        };
       }
     }
 
     // 스트림이 끝났는데도 토큰이 한 번도 없으면(= reasoning-only, 혹은 이벤트 타입 미스)
     if (!sentAnyToken) {
-      return { ok: false, reason: "OpenAI stream produced no visible text tokens" };
+      return {
+        ok: false,
+        reason: "OpenAI stream produced no visible text tokens",
+      };
     }
 
     sendEvent(res, "done", {});
@@ -285,7 +302,10 @@ async function tryOpenAIStreamToSSE(
 
     // 헤더 타임아웃으로 abort된 경우 폴백을 위해 false 리턴
     if (e?.name === "AbortError") {
-      return { ok: false, reason: "stream attempt aborted (header timeout or client abort)" };
+      return {
+        ok: false,
+        reason: "stream attempt aborted (header timeout or client abort)",
+      };
     }
     return { ok: false, reason: e?.message ?? "stream attempt failed" };
   }
@@ -313,7 +333,10 @@ async function fallbackNonStreamToFakeStream(
 
     if (!openaiRes.ok) {
       const t = await openaiRes.text().catch(() => "");
-      return { ok: false, reason: `OpenAI HTTP ${openaiRes.status} ${t}`.slice(0, 300) };
+      return {
+        ok: false,
+        reason: `OpenAI HTTP ${openaiRes.status} ${t}`.slice(0, 300),
+      };
     }
 
     const json = await openaiRes.json().catch(() => null);
@@ -365,9 +388,13 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 
   // 유저가 탭 닫으면 upstream도 중단
   const ac = new AbortController();
-  req.on("close", () => ac.abort());
 
-  // 전체 타임아웃(3분)
+  req.on("close", () => {
+    console.log("[chat] client closed -> abort");
+    ac.abort();
+  });
+
+  // 전체 타임아웃(6분)
   const totalTimer = setTimeout(() => {
     console.log("[chat] total timeout -> abort");
     ac.abort();
@@ -380,7 +407,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     // 사용자에게 즉시 “응답 생성 중” 느낌 주기 (선택)
     // sendEvent(res, "token", { token: body.lang === "ko" ? "생성 중…" : "Generating…" });
 
-    // 1) stream 먼저 시도 (헤더 15초 내 안 오면 폴백)
+    // 1) stream 먼저 시도 (헤더 30초 내 안 오면 폴백)
     const streamResult = await tryOpenAIStreamToSSE(res, input, ac.signal);
 
     if (streamResult.ok) {
@@ -392,7 +419,11 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     console.log("[chat] stream failed -> fallback:", streamResult.reason);
 
     // 2) non-stream으로 받아서 가짜 스트리밍
-    const fallbackResult = await fallbackNonStreamToFakeStream(res, input, ac.signal);
+    const fallbackResult = await fallbackNonStreamToFakeStream(
+      res,
+      input,
+      ac.signal
+    );
 
     if (!fallbackResult.ok) {
       sendEvent(res, "error", { error: fallbackResult.reason });
