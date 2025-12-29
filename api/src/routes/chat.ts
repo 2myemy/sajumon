@@ -13,7 +13,7 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
 const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "1000");
 
 // 1) "stream" 시도 시, 이 시간 내에 OpenAI 응답 헤더라도 못 받으면 폴백
-const STREAM_HEADER_TIMEOUT_MS = 15000; // 15s
+const STREAM_HEADER_TIMEOUT_MS = 30000; // 30s
 // 2) 전체 OpenAI 작업 타임아웃(너무 길면 사용자 경험 안 좋음)
 const UPSTREAM_TOTAL_TIMEOUT_MS = 180000; // 3min
 
