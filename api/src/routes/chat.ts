@@ -397,7 +397,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   req.on("close", () => console.log("[chat] req closed (not aborting upstream in debug)"));
 
 
-  // 전체 타임아웃(6분)
+  // 전체 타임아웃(3분)
   const totalTimer = setTimeout(() => {
     console.log("[chat] total timeout -> abort");
     ac.abort();
@@ -410,7 +410,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     // 사용자에게 즉시 “응답 생성 중” 느낌 주기 (선택)
     // sendEvent(res, "token", { token: body.lang === "ko" ? "생성 중…" : "Generating…" });
 
-    // 1) stream 먼저 시도 (헤더 30초 내 안 오면 폴백)
+    // 1) stream 먼저 시도 (헤더 15초 내 안 오면 폴백)
     const streamResult = await tryOpenAIStreamToSSE(res, input, ac.signal);
 
     if (streamResult.ok) {
