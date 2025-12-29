@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CharacterProfile } from "../lib/types";
 import { streamChat } from "../lib/streamChat";
 import { getSessionId } from "../lib/session";
@@ -14,14 +14,22 @@ export default function Chat({
 }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content: "Hi, how can I help you today?",
-    },
+    { role: "assistant", content: "Hi, how can I help you today?" },
   ]);
   const [input, setInput] = useState("");
 
   const animal = profile?.animal;
+
+  // ✅ 중복 submit 방지 + 요청 취소 컨트롤
+  const lockRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // ✅ unmount 시 진행 중 요청 정리
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const placeholder = useMemo(() => {
     if (!profile) return 'e.g., "Help me with my career"';
@@ -64,6 +72,81 @@ export default function Chat({
     );
   }
 
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const text = input.trim();
+    if (!text) return;
+
+    // ✅ 하드 락: 빠른 연타/중복 submit 방지
+    if (lockRef.current) return;
+    lockRef.current = true;
+
+    // ✅ 이전 요청이 남아있으면 중단
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setIsStreaming(true);
+    setInput("");
+
+    const sessionId = getSessionId();
+    let assistantText = "";
+
+    // ✅ "요청 직전 상태" 기준으로 history를 정확히 만들기
+    let historyToSend: Msg[] = [];
+    setMessages((prev) => {
+      historyToSend = prev.slice(-10);
+      return [...prev, { role: "user", content: text }, { role: "assistant", content: "" }];
+    });
+
+    try {
+      await streamChat({
+        sessionId,
+        archetypeId: profile.id,
+        lang: "en",
+        message: text,
+        history: historyToSend,
+        signal: controller.signal, // ✅ streamChat이 signal 받도록 만들어둔 버전
+        onToken: (t) => {
+          assistantText += t;
+
+          setMessages((prev) => {
+            const next = [...prev];
+            const lastIdx = next.length - 1;
+            if (next[lastIdx]?.role === "assistant") {
+              next[lastIdx] = { role: "assistant", content: assistantText };
+            } else {
+              next.push({ role: "assistant", content: assistantText });
+            }
+            return next;
+          });
+        },
+        onDone: () => {
+          setIsStreaming(false);
+        },
+        onError: (err) => {
+          setIsStreaming(false);
+          setMessages((prev) => {
+            const next = [...prev];
+            const lastIdx = next.length - 1;
+            const msg = `Error: ${err}`;
+            if (next[lastIdx]?.role === "assistant") {
+              next[lastIdx] = { role: "assistant", content: msg };
+            } else {
+              next.push({ role: "assistant", content: msg });
+            }
+            return next;
+          });
+        },
+      });
+    } finally {
+      lockRef.current = false;
+      abortRef.current = null;
+      setIsStreaming(false);
+    }
+  };
+
   return (
     <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
       <div className="mb-3">
@@ -93,68 +176,7 @@ export default function Chat({
         </div>
       </div>
 
-      <form
-        className="mt-3 flex gap-2"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const text = input.trim();
-          if (!text || isStreaming) return;
-
-          setIsStreaming(true);
-          setInput("");
-
-          // ✅ history는 "요청 직전까지의 메시지"를 최근 N개만 보내기
-          const historyToSend: Msg[] = messages.slice(-10);
-
-          // ✅ UI에 user + 빈 assistant 먼저 넣기
-          setMessages((prev) => [
-            ...prev,
-            { role: "user", content: text },
-            { role: "assistant", content: "" },
-          ]);
-
-          const sessionId = getSessionId();
-          let assistantText = "";
-
-          await streamChat({
-            sessionId,
-            archetypeId: profile.id, // ✅ "gye-hae" 같은 값
-            lang: "en", // ✅ 일단 en 고정. 필요하면 토글 추가 가능
-            message: text,
-            history: historyToSend,
-            onToken: (t) => {
-              assistantText += t;
-              setMessages((prev) => {
-                const next = [...prev];
-                const lastIdx = next.length - 1;
-                if (next[lastIdx]?.role === "assistant") {
-                  next[lastIdx] = { role: "assistant", content: assistantText };
-                }
-                return next;
-              });
-            },
-            onDone: () => {
-              setIsStreaming(false);
-            },
-            onError: (err) => {
-              setIsStreaming(false);
-              setMessages((prev) => {
-                const next = [...prev];
-                const lastIdx = next.length - 1;
-                if (next[lastIdx]?.role === "assistant") {
-                  next[lastIdx] = {
-                    role: "assistant",
-                    content: `Error: ${err}`,
-                  };
-                } else {
-                  next.push({ role: "assistant", content: `Error: ${err}` });
-                }
-                return next;
-              });
-            },
-          });
-        }}
-      >
+      <form className="mt-3 flex gap-2" onSubmit={onSubmit}>
         <input
           className="flex-1 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
           value={input}

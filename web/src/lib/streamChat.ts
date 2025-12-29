@@ -4,15 +4,13 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 type SSEParsed = { event?: string; data?: string };
 
 function parseSSEChunk(chunk: string): SSEParsed {
-  // SSE 한 이벤트 블록(= \n\n로 구분) 파싱
   const lines = chunk.split("\n");
-
   let event: string | undefined;
   const dataLines: string[] = [];
 
   for (const line of lines) {
-    // comment / ping (": ...") 무시
-    if (line.startsWith(":")) continue;
+    if (!line) continue;
+    if (line.startsWith(":")) continue; // comment / ping
 
     if (line.startsWith("event:")) {
       event = line.slice("event:".length).trim();
@@ -37,13 +35,21 @@ export async function streamChat(params: {
   onToken: (t: string) => void;
   onDone: () => void;
   onError: (err: string) => void;
-  signal?: AbortSignal; // ✅ optional: 외부에서 취소 가능
+  signal?: AbortSignal;
 }) {
+  if (!API_BASE) {
+    params.onError("Missing VITE_API_BASE_URL");
+    return;
+  }
+
   const controller = new AbortController();
 
-  // 외부 signal이 있으면 연결
+  // 외부 signal -> 내부 controller로 연결
   const abortFromOutside = () => controller.abort();
-  params.signal?.addEventListener("abort", abortFromOutside);
+  if (params.signal) {
+    if (params.signal.aborted) controller.abort();
+    else params.signal.addEventListener("abort", abortFromOutside, { once: true });
+  }
 
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
@@ -61,6 +67,7 @@ export async function streamChat(params: {
 
     if (!res.ok || !res.body) {
       const txt = await res.text().catch(() => "");
+      console.error("[streamChat] HTTP error", res.status, txt.slice(0, 200));
       params.onError(`HTTP ${res.status} ${txt}`.slice(0, 200));
       return;
     }
@@ -80,16 +87,15 @@ export async function streamChat(params: {
 
       for (const part of parts) {
         const { event, data } = parseSSEChunk(part);
-        if (!event) continue; // ping/comment 블록은 여기서 그냥 넘어감
-        if (!data) continue;
+        if (!event || !data) continue;
 
         if (event === "token") {
           try {
             const obj = JSON.parse(data);
             const token = obj?.token;
             if (typeof token === "string" && token.length) params.onToken(token);
-          } catch {
-            // 잘린 JSON이면 무시 (서버쪽이 \n\n 단위로 잘 보내는지 확인 필요)
+          } catch (e) {
+            console.warn("[streamChat] token JSON parse failed", data);
           }
           continue;
         }
@@ -113,12 +119,14 @@ export async function streamChat(params: {
 
     params.onDone();
   } catch (e: any) {
+    console.error("[streamChat] fetch/stream failed:", e);
     if (e?.name === "AbortError") {
       params.onError("aborted");
       return;
     }
     params.onError(e?.message ?? "stream error");
   } finally {
+    // once:true라서 굳이 remove 안 해도 되지만, 안전하게 해도 됨
     params.signal?.removeEventListener("abort", abortFromOutside);
   }
 }

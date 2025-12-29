@@ -389,10 +389,13 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   // 유저가 탭 닫으면 upstream도 중단
   const ac = new AbortController();
 
-  req.on("close", () => {
-    console.log("[chat] client closed -> abort");
-    ac.abort();
-  });
+  // req.on("close", () => {
+  //   console.log("[chat] client closed -> abort");
+  //   ac.abort();
+  // });
+
+  req.on("close", () => console.log("[chat] req closed (not aborting upstream in debug)"));
+
 
   // 전체 타임아웃(6분)
   const totalTimer = setTimeout(() => {
