@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CharacterProfile } from "../lib/types";
 import { streamChat } from "../lib/streamChat";
 import { getSessionId } from "../lib/session";
+import { TypingIndicator } from "./TypingIndicator";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -97,7 +98,11 @@ export default function Chat({
     let historyToSend: Msg[] = [];
     setMessages((prev) => {
       historyToSend = prev.slice(-10);
-      return [...prev, { role: "user", content: text }, { role: "assistant", content: "" }];
+      return [
+        ...prev,
+        { role: "user", content: text },
+        { role: "assistant", content: "" },
+      ];
     });
 
     try {
@@ -164,6 +169,11 @@ export default function Chat({
             m.role === "assistant" ? (
               <AssistantBubble
                 key={idx}
+                isTyping={
+                  isStreaming &&
+                  m.content.length === 0 &&
+                  idx === messages.length - 1
+                }
                 content={m.content}
                 avatarSrc={animal.image}
                 avatarAlt={animal.name}
@@ -198,11 +208,13 @@ export default function Chat({
 
 function AssistantBubble({
   content,
+  isTyping,
   avatarSrc,
   avatarAlt,
   title,
 }: {
   content: string;
+  isTyping?: boolean;
   avatarSrc: string;
   avatarAlt: string;
   title: string;
@@ -221,7 +233,7 @@ function AssistantBubble({
       <div className="max-w-[85%]">
         <div className="mb-1 text-xs text-zinc-500">{title}</div>
         <div className="rounded-2xl bg-white/10 px-3 py-2 text-sm leading-relaxed text-zinc-100">
-          {content}
+          {isTyping ? <TypingIndicator /> : content}
         </div>
       </div>
     </div>
