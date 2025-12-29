@@ -1,46 +1,59 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cute purple crystal ball favicon">
+  <defs>
+    <!-- softer, slightly toned-down purple -->
+    <radialGradient id="ballGrad" cx="28%" cy="22%" r="75%">
+      <stop offset="0%" stop-color="#c8bcff"/>
+      <stop offset="55%" stop-color="#a99af5"/>
+      <stop offset="100%" stop-color="#7a67d8"/>
+    </radialGradient>
 
-  <!-- Crystal Ball -->
-  <circle
-    cx="32"
-    cy="28"
-    r="20"
-    fill="#b7a9f7"
-    stroke="#111827"
-    stroke-width="4"/>
+    <linearGradient id="baseGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd9a6"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
 
-  <!-- Eyes -->
-  <circle cx="25" cy="26" r="4" fill="#1f2937"/>
-  <circle cx="39" cy="26" r="4" fill="#1f2937"/>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
 
-  <!-- Eye highlights -->
-  <circle cx="23.8" cy="24.8" r="1.1" fill="#ffffff"/>
-  <circle cx="37.8" cy="24.8" r="1.1" fill="#ffffff"/>
+  <!-- Ball -->
+  <g filter="url(#softShadow)">
+    <circle cx="32" cy="28" r="20" fill="url(#ballGrad)" stroke="#111827" stroke-width="3.5"/>
+    <!-- glossy highlight -->
+    <path d="M20.5 20.5c4.8-6.2 14.4-8.6 22.1-4.8"
+          fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="4.2" stroke-linecap="round"/>
+  </g>
 
-  <!-- Smile (softer U shape) -->
-  <path
-    d="M25 33
-       Q32 39 39 33"
-    fill="none"
-    stroke="#1f2937"
-    stroke-width="3"
-    stroke-linecap="round"/>
+  <!-- Face -->
+  <g>
+    <!-- Eyes (slightly bigger + cuter) -->
+    <circle cx="25.2" cy="26.2" r="4.3" fill="#111827"/>
+    <circle cx="38.8" cy="26.2" r="4.3" fill="#111827"/>
+
+    <!-- Highlights -->
+    <circle cx="23.9" cy="25.0" r="1.25" fill="#ffffff" opacity="0.95"/>
+    <circle cx="37.5" cy="25.0" r="1.25" fill="#ffffff" opacity="0.95"/>
+    <circle cx="26.1" cy="27.7" r="0.55" fill="#ffffff" opacity="0.55"/>
+    <circle cx="39.7" cy="27.7" r="0.55" fill="#ffffff" opacity="0.55"/>
+
+    <!-- Cheeks -->
+    <circle cx="20.8" cy="31.6" r="2.4" fill="#fb7185" opacity="0.35"/>
+    <circle cx="43.2" cy="31.6" r="2.4" fill="#fb7185" opacity="0.35"/>
+
+    <!-- Mouth -->
+    <path d="M28 32.2c1.2 2.2 2.7 3.3 4 3.3s2.8-1.1 4-3.3"
+          fill="none" stroke="#111827" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <path d="M46.6 16.2l1.2 2.3 2.6 1.1-2.6 1.1-1.2 2.3-1.2-2.3-2.6-1.1 2.6-1.1z"
+        fill="#ffffff" opacity="0.75"/>
 
   <!-- Base -->
-  <rect
-    x="18" y="46"
-    rx="6" ry="6"
-    width="28" height="8"
-    fill="#fde68a"
-    stroke="#111827"
-    stroke-width="3"/>
-
-  <rect
-    x="14" y="52"
-    rx="7" ry="7"
-    width="36" height="8"
-    fill="#fdba74"
-    stroke="#111827"
-    stroke-width="3"/>
-
+  <g filter="url(#softShadow)">
+    <rect x="18" y="44" width="28" height="8" rx="4" ry="4"
+          fill="#fcd34d" stroke="#111827" stroke-width="3"/>
+    <rect x="14" y="52" width="36" height="8" rx="7" ry="7"
+          fill="url(#baseGrad)" stroke="#111827" stroke-width="3"/>
+  </g>
 </svg>

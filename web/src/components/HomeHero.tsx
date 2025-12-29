@@ -12,7 +12,7 @@ export default function HomeHero() {
           Based on your birth date
         </span>
         <span className="rounded-full border border-white/10 bg-zinc-950/40 px-3 py-1 text-xs text-zinc-200">
-          60 symbolic archetypes (Ganji)
+          60 Saju archetype (Ganji)
         </span>
       </div>
 
@@ -33,16 +33,9 @@ export default function HomeHero() {
         Enter your{" "}
         <span className="font-semibold text-zinc-100">date of birth</span> to
         calculate your{" "}
-        <span className="font-semibold text-zinc-100">Day Pillar</span> — one of
-        60 symbolic combinations (Ganji). We'll match it to a character profile and let
+        <span className="font-semibold text-zinc-100">character</span> — one of
+        60 Saju combinations (Ganji). We'll match it to a character profile and let
         you chat in that style.
-      </p>
-
-      <p className="mt-2 text-xs text-zinc-500">
-        If you don't know your birth time, leave it off — you can still generate
-        your archetype. Births around{" "}
-        <span className="text-zinc-300 font-semibold">23:00</span> may shift to
-        the next day archetype.
       </p>
 
       {/* Micro CTA row */}
@@ -58,7 +51,7 @@ export default function HomeHero() {
           to="/library"
           className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-white/10"
         >
-          Browse all 60 Ganji→
+          Browse all 60 Ganji →
         </Link>
       </div>
     </header>
