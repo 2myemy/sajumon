@@ -22,7 +22,15 @@ export default function Chat({
 }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "Hi, how can I help you today?" },
+    {
+      role: "assistant",
+      content: `What would you like to talk about? Choose a number.
+1) My personality
+2) Fortune
+3) Work / career
+4) Relationships
+5) Just talk`,
+    },
   ]);
   const [input, setInput] = useState("");
 
@@ -260,7 +268,7 @@ function AssistantBubble({
 
       <div className="max-w-[85%]">
         <div className="mb-1 text-xs text-zinc-500">{title}</div>
-        <div className="rounded-2xl bg-white/10 px-3 py-2 text-sm leading-relaxed text-zinc-100">
+        <div className="whitespace-pre-line rounded-2xl bg-white/10 px-3 py-2 text-sm leading-relaxed text-zinc-100">
           {isTyping ? <TypingIndicator /> : content}
         </div>
       </div>
