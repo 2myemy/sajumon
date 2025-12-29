@@ -4,7 +4,14 @@ import { streamChat } from "../lib/streamChat";
 import { getSessionId } from "../lib/session";
 import { TypingIndicator } from "./TypingIndicator";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  archetypeId?: string;
+  avatarSrc?: string;
+  avatarAlt?: string;
+  title?: string;
+};
 
 export default function Chat({
   profile,
@@ -101,7 +108,14 @@ export default function Chat({
       return [
         ...prev,
         { role: "user", content: text },
-        { role: "assistant", content: "" },
+        {
+          role: "assistant",
+          content: "",
+          archetypeId: profile.id,
+          avatarSrc: animal.image,
+          avatarAlt: animal.name,
+          title: profile.title,
+        },
       ];
     });
 
@@ -119,11 +133,25 @@ export default function Chat({
           setMessages((prev) => {
             const next = [...prev];
             const lastIdx = next.length - 1;
+
             if (next[lastIdx]?.role === "assistant") {
-              next[lastIdx] = { role: "assistant", content: assistantText };
+              const prevMsg = next[lastIdx];
+              next[lastIdx] = {
+                ...prevMsg,
+                role: "assistant",
+                content: assistantText,
+              };
             } else {
-              next.push({ role: "assistant", content: assistantText });
+              next.push({
+                role: "assistant",
+                content: assistantText,
+                archetypeId: profile.id,
+                avatarSrc: animal.image,
+                avatarAlt: animal.name,
+                title: profile.title,
+              });
             }
+
             return next;
           });
         },
@@ -169,15 +197,15 @@ export default function Chat({
             m.role === "assistant" ? (
               <AssistantBubble
                 key={idx}
+                content={m.content}
                 isTyping={
                   isStreaming &&
                   m.content.length === 0 &&
                   idx === messages.length - 1
                 }
-                content={m.content}
-                avatarSrc={animal.image}
-                avatarAlt={animal.name}
-                title={profile.title}
+                avatarSrc={m.avatarSrc ?? animal.image}
+                avatarAlt={m.avatarAlt ?? animal.name}
+                title={m.title ?? profile.title}
               />
             ) : (
               <UserBubble key={idx} content={m.content} />
