@@ -15,9 +15,9 @@ const MAX_OUTPUT_TOKENS = Number(
 );
 
 // 1) "stream" 시도 시, 이 시간 내에 OpenAI 응답 헤더라도 못 받으면 폴백
-const STREAM_HEADER_TIMEOUT_MS = 30000; // 30s
+const STREAM_HEADER_TIMEOUT_MS = 15000; // 15s
 // 2) 전체 OpenAI 작업 타임아웃(너무 길면 사용자 경험 안 좋음)
-const UPSTREAM_TOTAL_TIMEOUT_MS = 360000; // 3min
+const UPSTREAM_TOTAL_TIMEOUT_MS = 180000; // 3min
 
 /**
  * ===== Validation =====
@@ -389,12 +389,12 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   // 유저가 탭 닫으면 upstream도 중단
   const ac = new AbortController();
 
-  // req.on("close", () => {
-  //   console.log("[chat] client closed -> abort");
-  //   ac.abort();
-  // });
+  req.on("close", () => {
+    console.log("[chat] client closed -> abort");
+    ac.abort();
+  });
 
-  req.on("close", () => console.log("[chat] req closed (not aborting upstream in debug)"));
+  // req.on("close", () => console.log("[chat] req closed (not aborting upstream in debug)"));
 
 
   // 전체 타임아웃(6분)
