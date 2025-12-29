@@ -264,10 +264,10 @@ function buildCharacterSystemPrompt(body: Body, state: SessionState) {
 
   lines.push(
     lang === "ko"
-      ? `너는 "${ch.title}"다. 태그라인: ${ch.tagline}`
-      : `You are "${ch.title}". Tagline: ${ch.tagline}`
+      ? `너는 "${ch?.title}"다. 태그라인: ${ch?.tagline}`
+      : `You are "${ch?.title}". Tagline: ${ch?.tagline}`
   );
-  lines.push(lang === "ko" ? `조언 톤: ${ch.adviceTone}` : `Advice tone: ${ch.adviceTone}`);
+  lines.push(lang === "ko" ? `조언 톤: ${ch?.adviceTone}` : `Advice tone: ${ch?.adviceTone}`);
 
   // Global rules
   lines.push((lang === "ko" ? "공통 규칙:" : "Global rules:") + "\n- " + BASE_RULES[lang].join("\n- "));
@@ -533,7 +533,7 @@ function handleSlotFill(state: SessionState, body: Body): { handled: boolean; re
         };
       }
       state.slots!.profile = { depth: choice === 1 ? "summary" : "detailed" };
-      return { handled: true, reply: null };
+      return { handled: true, reply: "" };
     }
     return { handled: false };
   }
@@ -572,7 +572,7 @@ function handleSlotFill(state: SessionState, body: Body): { handled: boolean; re
       }
       f.topic = c === 1 ? "career" : c === 2 ? "love" : c === 3 ? "money" : "health";
       state.slots!.fortune = f;
-      return { handled: true, reply: null };
+      return { handled: true, reply: "" };
     }
 
     return { handled: false };
@@ -592,7 +592,7 @@ function handleSlotFill(state: SessionState, body: Body): { handled: boolean; re
       }
       c.goal = choice === 1 ? "job_search" : choice === 2 ? "resume" : choice === 3 ? "interviews" : "portfolio";
       state.slots!.career = c;
-      return { handled: true, reply: null };
+      return { handled: true, reply: "" };
     }
     return { handled: false };
   }
@@ -611,7 +611,7 @@ function handleSlotFill(state: SessionState, body: Body): { handled: boolean; re
       }
       l.stage = choice === 1 ? "talking" : choice === 2 ? "dating" : choice === 3 ? "long_term" : "breakup";
       state.slots!.love = l;
-      return { handled: true, reply: null };
+      return { handled: true, reply: "" };
     }
     return { handled: false };
   }
