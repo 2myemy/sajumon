@@ -574,7 +574,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     // 2) slot 채우기
     const slot = handleSlotFill(state, body);
     if (slot.handled) {
-      if (slot.reply) return finish(() => sendPlainAssistant(res, slot.reply));
+      if (typeof slot.reply === "string") return finish(() => sendPlainAssistant(res, slot.reply));
 
       if (!isReadyToCallLLM(state)) {
         const q = nextQuestionForMode(state.mode!, body.lang, state);
