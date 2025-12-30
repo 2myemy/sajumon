@@ -1,14 +1,20 @@
 export type ChatMsg = { role: "user" | "assistant"; content: string };
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 type SSEParsed = { event?: string; data?: string };
 
 function parseSSEChunk(chunk: string): SSEParsed {
+  // chunk is a single SSE message WITHOUT the trailing blank line
+  // expected:
+  // event: token
+  // data: {"token":"..."}
   const lines = chunk.split("\n");
   let event: string | undefined;
   const dataLines: string[] = [];
 
-  for (const line of lines) {
+  for (const raw of lines) {
+    const line = raw.trimEnd();
     if (!line) continue;
     if (line.startsWith(":")) continue; // comment / ping
 
@@ -44,12 +50,17 @@ export async function streamChat(params: {
 
   const controller = new AbortController();
 
-  // 외부 signal -> 내부 controller로 연결
-  const abortFromOutside = () => controller.abort();
-  if (params.signal) {
-    if (params.signal.aborted) controller.abort();
-    else params.signal.addEventListener("abort", abortFromOutside, { once: true });
+  // external signal -> internal controller
+  const abortFromOutside = () => controller.abort("aborted-from-outside");
+  const outside = params.signal;
+
+  if (outside) {
+    if (outside.aborted) controller.abort("outside-already-aborted");
+    else outside.addEventListener("abort", abortFromOutside, { once: true });
   }
+
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let sawDoneEvent = false;
 
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
@@ -67,12 +78,11 @@ export async function streamChat(params: {
 
     if (!res.ok || !res.body) {
       const txt = await res.text().catch(() => "");
-      console.error("[streamChat] HTTP error", res.status, txt.slice(0, 200));
-      params.onError(`HTTP ${res.status} ${txt}`.slice(0, 200));
+      params.onError(`HTTP ${res.status} ${txt}`.slice(0, 300));
       return;
     }
 
-    const reader = res.body.getReader();
+    reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
@@ -82,50 +92,78 @@ export async function streamChat(params: {
 
       buffer += decoder.decode(value, { stream: true });
 
+      // IMPORTANT: normalize CRLF -> LF for reliable splitting
+      if (buffer.includes("\r")) buffer = buffer.replace(/\r/g, "");
+
+      // SSE messages separated by blank line
       const parts = buffer.split("\n\n");
       buffer = parts.pop() ?? "";
 
       for (const part of parts) {
         const { event, data } = parseSSEChunk(part);
-        if (!event || !data) continue;
+        if (!event) continue;
 
         if (event === "token") {
+          if (!data) continue;
           try {
             const obj = JSON.parse(data);
             const token = obj?.token;
             if (typeof token === "string" && token.length) params.onToken(token);
-          } catch (e) {
-            console.warn("[streamChat] token JSON parse failed", data);
+          } catch {
+            // ignore malformed token payload
           }
           continue;
         }
 
         if (event === "done") {
+          sawDoneEvent = true;
+          await reader.cancel().catch(() => {});
+          reader = null;
           params.onDone();
           return;
         }
 
         if (event === "error") {
-          try {
-            const obj = JSON.parse(data);
-            params.onError(obj?.error ?? "unknown");
-          } catch {
+          if (data) {
+            try {
+              const obj = JSON.parse(data);
+              params.onError(obj?.error ?? "unknown");
+            } catch {
+              params.onError("unknown");
+            }
+          } else {
             params.onError("unknown");
           }
+          await reader.cancel().catch(() => {});
+          reader = null;
           return;
         }
+
+        // ignore other events
       }
+    }
+
+    // Stream ended without "done"
+    if (!sawDoneEvent) {
+      params.onError("stream closed without done");
+      return;
     }
 
     params.onDone();
   } catch (e: any) {
-    console.error("[streamChat] fetch/stream failed:", e);
+    // AbortError is a normal cancellation path (page nav, unmount, user stop)
     if (e?.name === "AbortError") {
-      params.onError("aborted");
-      return;
+      return; // silent
     }
     params.onError(e?.message ?? "stream error");
   } finally {
-    params.signal?.removeEventListener("abort", abortFromOutside);
+    if (outside) outside.removeEventListener("abort", abortFromOutside);
+    if (reader) {
+      try {
+        await reader.cancel();
+      } catch {
+        // ignore
+      }
+    }
   }
 }
