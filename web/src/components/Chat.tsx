@@ -37,26 +37,41 @@ export default function Chat({
 
   const animal = profile?.animal;
 
-  // prevent double submit + hold current request controller
+  // submit lock + current request controller
   const lockRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // keep latest messages in a ref so history is created synchronously
+  // keep latest messages in a ref for synchronous history building
   const messagesRef = useRef<Msg[]>(messages);
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
-  // React 18 StrictMode(dev) cleanup runs once on mount (fake unmount) -> skip abort on first cleanup
+  // ---- abort tracing (why "aborted" happens) ----
+  const abortReasonRef = useRef<string | null>(null);
+  const abortCurrent = (reason: string) => {
+    abortReasonRef.current = reason;
+    console.log("[Chat] abortCurrent:", reason);
+    abortRef.current?.abort();
+  };
+
+  // React 18 StrictMode(dev) runs cleanup once on mount (fake unmount)
   const cleanupCountRef = useRef(0);
   useEffect(() => {
     resetSessionId();
 
     return () => {
       cleanupCountRef.current += 1;
-      if (isDev && cleanupCountRef.current === 1) return;
-      abortRef.current?.abort();
+
+      // ✅ skip the first cleanup only in dev (StrictMode behavior)
+      if (isDev && cleanupCountRef.current === 1) {
+        console.log("[Chat] skip first dev cleanup abort (StrictMode)");
+        return;
+      }
+
+      abortCurrent("unmount cleanup");
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const placeholder = useMemo(() => {
@@ -105,19 +120,33 @@ export default function Chat({
 
     const text = input.trim();
     if (!text) return;
-    if (lockRef.current) return;
 
+    // prevent double-submit
+    if (lockRef.current) return;
     lockRef.current = true;
 
-    // abort previous request, start a new one
-    abortRef.current?.abort();
+    // If a request is still active, abort it (safety).
+    // (Usually isStreaming already disables submit, but keep this robust.)
+    if (abortRef.current) {
+      abortCurrent("submit: abort previous request");
+    }
+
     const controller = new AbortController();
     abortRef.current = controller;
+
+    controller.signal.addEventListener("abort", () => {
+      console.log(
+        "[Chat] controller aborted. reason:",
+        abortReasonRef.current
+      );
+    });
 
     setIsStreaming(true);
     setInput("");
 
     const sessionId = getSessionId();
+
+    // build history synchronously from ref (no setState race)
     const historyToSend = messagesRef.current.slice(-10);
 
     // optimistic UI: user msg + assistant placeholder
@@ -186,6 +215,8 @@ export default function Chat({
           setMessages((prev) => {
             const next = [...prev];
             const lastIdx = next.length - 1;
+
+            // aborted면 사용자에게 너무 거슬리게 안 보여주고 싶으면 여기서 메시지 바꿔도 됨
             const msg = `Error: ${err}`;
 
             if (next[lastIdx]?.role === "assistant") {
@@ -206,7 +237,10 @@ export default function Chat({
       });
     } finally {
       lockRef.current = false;
+
+      // only clear abortRef if it's still our controller
       if (abortRef.current === controller) abortRef.current = null;
+
       finalize();
     }
   };
