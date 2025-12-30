@@ -937,6 +937,13 @@ function isReadyToCallLLM(state: SessionState): boolean {
  * ===== Route =====
  */
 chatRouter.post("/", async (req: Request, res: Response) => {
+  console.log("[chat] HIT /api/chat", {
+    at: new Date().toISOString(),
+    sessionId: req.body?.sessionId,
+    archetypeId: req.body?.archetypeId,
+    lang: req.body?.lang,
+    msg: String(req.body?.message ?? "").slice(0, 60),
+  });
   const cleanupRaw = sseInit(req, res);
   let cleaned = false;
   const cleanup = () => {
@@ -983,6 +990,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
         state.mode = "chat";
       }
     }
+    console.log("[chat] mode after select =", state.mode);
 
     // 2) slot 채우기(하이브리드)
     const slot = handleSlotFill(state, body);
@@ -1010,10 +1018,17 @@ chatRouter.post("/", async (req: Request, res: Response) => {
         askModeMenu(body.lang);
       return finish(() => sendPlainAssistant(res, q));
     }
+    console.log(
+      "[chat] slot handled =",
+      slot.handled,
+      "ready =",
+      isReadyToCallLLM(state)
+    );
 
     // 4) LLM 호출
     const input = buildInput(body, state);
 
+    console.log("[chat] CALLING OPENAI", { mode: state.mode });
     const streamResult = await tryOpenAIStreamToSSE(res, input, ac.signal);
     if (streamResult.ok) return finish();
 
