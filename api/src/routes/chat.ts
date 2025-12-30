@@ -943,48 +943,61 @@ function isReadyToCallLLM(state: SessionState): boolean {
  * ===== Route =====
  */
 chatRouter.post("/", async (req: Request, res: Response) => {
-  console.log("[chat] HIT /api/chat", {
-    at: new Date().toISOString(),
-    sessionId: req.body?.sessionId,
-    archetypeId: req.body?.archetypeId,
-    lang: req.body?.lang,
-    msg: String(req.body?.message ?? "").slice(0, 60),
-  });
-  const cleanupRaw = sseInit(req, res);
-  let cleaned = false;
-  const cleanup = () => {
-    if (cleaned) return;
-    cleaned = true;
-    cleanupRaw();
-  };
+  const cleanupSSE = sseInit(req, res);
 
+  let finished = false;
   const finish = (fn?: () => void) => {
+    if (finished) return;
+    finished = true;
     try {
       fn?.();
+    } catch (e) {
+      console.error("[chat] finish handler error", e);
     } finally {
-      cleanup();
-      if (!res.writableEnded) res.end();
+      try {
+        cleanupSSE();
+      } catch {}
+      try {
+        if (!res.writableEnded) res.end();
+      } catch {}
     }
   };
 
+  // ---- validate ----
   const parsed = BodySchema.safeParse(req.body);
   if (!parsed.success) {
-    return finish(() =>
-      sendEvent(res, "error", { error: "Invalid request body" })
-    );
+    return finish(() => sendEvent(res, "error", { error: "Invalid request body" }));
   }
 
   const body = parsed.data;
   const state = ensureSession(body.sessionId);
 
-  const ac = new AbortController();
-  const totalTimer = setTimeout(() => ac.abort(), UPSTREAM_TOTAL_TIMEOUT_MS);
+  // ---- upstream abort management ----
+  const upstreamAC = new AbortController();
+  const abortUpstream = (reason: string) => {
+    if (upstreamAC.signal.aborted) return;
+    console.log("[chat] abort upstream:", reason);
+    upstreamAC.abort();
+  };
 
-  req.on("close", () => ac.abort());
-  res.on("close", () => ac.abort());
+  // total timeout (전체 요청 상한)
+  const totalTimer = setTimeout(() => abortUpstream("total timeout"), UPSTREAM_TOTAL_TIMEOUT_MS);
+
+  // IMPORTANT: SSE에서는 close 이벤트가 너무 쉽게/빨리 올 수 있으니 즉시 abort 금지
+  const onClientClose = (who: "req" | "res") => {
+    // 150ms 정도 기다렸다가 진짜로 끝난 케이스인지 확인
+    setTimeout(() => {
+      if (finished) return;
+      if (res.writableEnded) return;
+      abortUpstream(`${who} close`);
+    }, 150);
+  };
+
+  req.on("close", () => onClientClose("req"));
+  res.on("close", () => onClientClose("res"));
 
   try {
-    // 1) mode 선택: 숫자 "단독"만 메뉴로 인정, 아니면 chat로 자동 진입
+    // ---- 1) mode select ----
     if (!state.mode) {
       const n = parseModeChoiceOnly(body.message);
       if (n && n >= 1 && n <= 5) {
@@ -996,15 +1009,20 @@ chatRouter.post("/", async (req: Request, res: Response) => {
         state.mode = "chat";
       }
     }
+
     console.log("[chat] mode after select =", state.mode);
 
-    // 2) slot 채우기(하이브리드)
+    // ---- 2) slot fill ----
     const slot = handleSlotFill(state, body);
+    console.log("[chat] slot handled =", slot.handled, "ready =", isReadyToCallLLM(state));
+
     if (slot.handled) {
+      // slot.reply는 ""일 수도 있으니 length 체크로 판단
       if (slot.reply != null && slot.reply.length > 0) {
-        return finish(() => sendPlainAssistant(res, slot.reply!));
+        return finish(() => sendPlainAssistant(res, slot.reply as string));
       }
 
+      // 슬롯이 아직 부족하면 다음 질문
       if (!isReadyToCallLLM(state)) {
         const q = nextQuestionForMode(state.mode!, body.lang, state);
         return finish(() =>
@@ -1014,54 +1032,43 @@ chatRouter.post("/", async (req: Request, res: Response) => {
           )
         );
       }
-      // 슬롯 완성 → 아래 LLM 호출
+      // 슬롯 완성 -> 아래 OpenAI 호출
     }
 
-    // 3) 슬롯 부족이면 질문
+    // ---- 3) still not ready -> ask ----
     if (!isReadyToCallLLM(state)) {
-      const q =
-        nextQuestionForMode(state.mode ?? "chat", body.lang, state) ??
-        askModeMenu(body.lang);
+      const q = nextQuestionForMode(state.mode ?? "chat", body.lang, state) ?? askModeMenu(body.lang);
       return finish(() => sendPlainAssistant(res, q));
     }
-    console.log(
-      "[chat] slot handled =",
-      slot.handled,
-      "ready =",
-      isReadyToCallLLM(state)
-    );
 
-    // 4) LLM 호출
+    // ---- 4) call OpenAI ----
+    console.log("[chat] CALLING OPENAI", { mode: state.mode });
+
     const input = buildInput(body, state);
 
-    console.log("[chat] CALLING OPENAI", { mode: state.mode });
-    const streamResult = await tryOpenAIStreamToSSE(res, input, ac.signal);
+    // ✅ OpenAI fetch는 upstreamAC.signal 사용
+    const streamResult = await tryOpenAIStreamToSSE(res, input, upstreamAC.signal);
 
     if (streamResult.ok) return finish();
 
-    const fallbackResult = await fallbackNonStreamToFakeStream(
-      res,
-      input,
-      ac.signal
-    );
-    if (!fallbackResult.ok)
-      return finish(() =>
-        sendEvent(res, "error", { error: fallbackResult.reason })
-      );
+    // 스트림 실패 시 fallback
+    const fallbackResult = await fallbackNonStreamToFakeStream(res, input, upstreamAC.signal);
+    if (!fallbackResult.ok) {
+      return finish(() => sendEvent(res, "error", { error: fallbackResult.reason }));
+    }
 
     return finish();
   } catch (e: any) {
+    console.error("[chat] route error", e?.name, e?.message);
     return finish(() =>
       sendEvent(res, "error", {
-        error:
-          e?.name === "AbortError"
-            ? "Request aborted / timeout"
-            : e?.message ?? "server error",
+        error: e?.name === "AbortError" ? "Request aborted / timeout" : e?.message ?? "server error",
       })
     );
   } finally {
     clearTimeout(totalTimer);
   }
 });
+
 
 export default chatRouter;
