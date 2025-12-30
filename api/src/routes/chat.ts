@@ -755,12 +755,17 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     // 1) mode 선택
     if (!state.mode) {
       const n = parseLeadingChoice(body.message);
-      if (!n || n < 1 || n > 5)
-        return finish(() => sendPlainAssistant(res, askModeMenu(body.lang)));
+      if (n && n >= 1 && n <= 5) {
+        state.mode = modeFromChoice(n);
 
-      state.mode = modeFromChoice(n);
-      const q = nextQuestionForMode(state.mode, body.lang, state);
-      if (q) return finish(() => sendPlainAssistant(res, q));
+        // 모드별 추가 질문이 필요하면 질문하고 종료
+        const q = nextQuestionForMode(state.mode, body.lang, state);
+        if (q) return finish(() => sendPlainAssistant(res, q));
+      } else {
+        // ✅ 숫자 선택이 없으면 자동으로 일반 상담(chat)으로 진입
+        state.mode = "chat";
+        // 슬롯 필요 없음 → 아래에서 바로 LLM 호출로 진행
+      }
     }
 
     // 2) slot 채우기
