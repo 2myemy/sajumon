@@ -40,12 +40,30 @@ export default function Chat({
   const lockRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // ✅ unmount 시 진행 중 요청 정리
+  // ✅ 최신 messages를 동기적으로 참조하기 위한 ref (historyToSend 버그 해결)
+  const messagesRef = useRef<Msg[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // ✅ StrictMode 개발환경에서 "즉시 cleanup → abort" 방지
+  const mountedOnceRef = useRef(false);
+
+  // ✅ unmount 시 진행 중 요청 정리 (StrictMode 첫 cleanup은 무시)
   useEffect(() => {
     resetSessionId();
+
+    if (!mountedOnceRef.current) {
+      mountedOnceRef.current = true;
+    }
+
     return () => {
+      // React 18 StrictMode(dev): mount→cleanup→mount를 한 번 돌릴 수 있음
+      // 첫 cleanup에서 네트워크 abort가 발생해 "Error: aborted"가 나올 수 있어 방지
+      if (!mountedOnceRef.current) return;
       abortRef.current?.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const placeholder = useMemo(() => {
@@ -110,23 +128,24 @@ export default function Chat({
     const sessionId = getSessionId();
     let assistantText = "";
 
-    // ✅ "요청 직전 상태" 기준으로 history를 정확히 만들기
-    let historyToSend: Msg[] = [];
-    setMessages((prev) => {
-      historyToSend = prev.slice(-10);
-      return [
-        ...prev,
-        { role: "user", content: text },
-        {
-          role: "assistant",
-          content: "",
-          archetypeId: profile.id,
-          avatarSrc: animal.image,
-          avatarAlt: animal.name,
-          title: profile.title,
-        },
-      ];
-    });
+    // ✅ 요청 "직전" messages 기준으로 history를 동기적으로 생성 (setState race 제거)
+    const historyToSend = messagesRef.current.slice(-10);
+
+    // UI에 사용자 메시지 + assistant placeholder 먼저 반영
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: text },
+      {
+        role: "assistant",
+        content: "",
+        archetypeId: profile.id,
+        avatarSrc: animal.image,
+        avatarAlt: animal.name,
+        title: profile.title,
+      },
+    ]);
+
+    const endStreamingUI = () => setIsStreaming(false);
 
     try {
       await streamChat({
@@ -135,7 +154,7 @@ export default function Chat({
         lang: "en",
         message: text,
         history: historyToSend,
-        signal: controller.signal, // ✅ streamChat이 signal 받도록 만들어둔 버전
+        signal: controller.signal,
         onToken: (t) => {
           assistantText += t;
 
@@ -144,11 +163,13 @@ export default function Chat({
             const lastIdx = next.length - 1;
 
             if (next[lastIdx]?.role === "assistant") {
-              const prevMsg = next[lastIdx];
               next[lastIdx] = {
-                ...prevMsg,
-                role: "assistant",
+                ...(next[lastIdx] as Msg),
                 content: assistantText,
+                archetypeId: profile.id,
+                avatarSrc: animal.image,
+                avatarAlt: animal.name,
+                title: profile.title,
               };
             } else {
               next.push({
@@ -165,18 +186,31 @@ export default function Chat({
           });
         },
         onDone: () => {
-          setIsStreaming(false);
+          endStreamingUI();
         },
         onError: (err) => {
-          setIsStreaming(false);
+          endStreamingUI();
           setMessages((prev) => {
             const next = [...prev];
             const lastIdx = next.length - 1;
             const msg = `Error: ${err}`;
+
             if (next[lastIdx]?.role === "assistant") {
-              next[lastIdx] = { role: "assistant", content: msg };
+              // 기존 placeholder를 에러로 교체하되 프로필 메타는 유지
+              next[lastIdx] = {
+                ...(next[lastIdx] as Msg),
+                role: "assistant",
+                content: msg,
+              };
             } else {
-              next.push({ role: "assistant", content: msg });
+              next.push({
+                role: "assistant",
+                content: msg,
+                archetypeId: profile.id,
+                avatarSrc: animal.image,
+                avatarAlt: animal.name,
+                title: profile.title,
+              });
             }
             return next;
           });
@@ -184,8 +218,11 @@ export default function Chat({
       });
     } finally {
       lockRef.current = false;
-      abortRef.current = null;
-      setIsStreaming(false);
+
+      // ✅ "내가 만든 controller"가 여전히 current일 때만 null 처리
+      if (abortRef.current === controller) abortRef.current = null;
+
+      endStreamingUI();
     }
   };
 
@@ -207,11 +244,7 @@ export default function Chat({
               <AssistantBubble
                 key={idx}
                 content={m.content}
-                isTyping={
-                  isStreaming &&
-                  m.content.length === 0 &&
-                  idx === messages.length - 1
-                }
+                isTyping={isStreaming && m.content.length === 0 && idx === messages.length - 1}
                 avatarSrc={m.avatarSrc ?? animal.image}
                 avatarAlt={m.avatarAlt ?? animal.name}
                 title={m.title ?? profile.title}
