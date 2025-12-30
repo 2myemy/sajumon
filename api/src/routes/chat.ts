@@ -432,8 +432,8 @@ async function tryOpenAIStreamToSSE(
     STREAM_HEADER_TIMEOUT_MS
   );
 
-  const combined = AbortSignal.any([signal, headerAC.signal]);
-
+  const combined = signal;
+  console.log("[openai] fetch start");
   try {
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -1030,6 +1030,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 
     console.log("[chat] CALLING OPENAI", { mode: state.mode });
     const streamResult = await tryOpenAIStreamToSSE(res, input, ac.signal);
+
     if (streamResult.ok) return finish();
 
     const fallbackResult = await fallbackNonStreamToFakeStream(
