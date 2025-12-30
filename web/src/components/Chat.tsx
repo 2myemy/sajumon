@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CharacterProfile } from "../lib/types";
 import { streamChat } from "../lib/streamChat";
-import { getSessionId } from "../lib/session";
+import { getSessionId, resetSessionId } from "../lib/session";
 import { TypingIndicator } from "./TypingIndicator";
 
 type Msg = {
@@ -42,6 +42,7 @@ export default function Chat({
 
   // ✅ unmount 시 진행 중 요청 정리
   useEffect(() => {
+    resetSessionId();
     return () => {
       abortRef.current?.abort();
     };

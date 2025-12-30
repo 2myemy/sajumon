@@ -1,9 +1,20 @@
+// src/lib/session.ts
+const KEY = "sajumon_session_id";
+
+function newId() {
+  return crypto.randomUUID();
+}
+
 export function getSessionId() {
-  const key = "sajumon_session_id";
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
+  const existing = localStorage.getItem(KEY);
+  if (existing) return existing;
+  const id = newId();
+  localStorage.setItem(KEY, id);
+  return id;
+}
+
+export function resetSessionId() {
+  const id = newId();
+  localStorage.setItem(KEY, id);
   return id;
 }
