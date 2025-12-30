@@ -47,7 +47,13 @@ export default function Chat({
     messagesRef.current = messages;
   }, [messages]);
 
-  // ---- abort tracing (why "aborted" happens) ----
+  // keep latest isStreaming in a ref (avoid stale closure/timing)
+  const isStreamingRef = useRef(false);
+  useEffect(() => {
+    isStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
+  // abort tracing
   const abortReasonRef = useRef<string | null>(null);
   const abortCurrent = (reason: string) => {
     abortReasonRef.current = reason;
@@ -55,20 +61,17 @@ export default function Chat({
     abortRef.current?.abort();
   };
 
-  // React 18 StrictMode(dev) runs cleanup once on mount (fake unmount)
+  // React 18 StrictMode(dev): mount -> cleanup -> mount (fake unmount) once
   const cleanupCountRef = useRef(0);
   useEffect(() => {
     resetSessionId();
 
     return () => {
       cleanupCountRef.current += 1;
-
-      // ✅ skip the first cleanup only in dev (StrictMode behavior)
       if (isDev && cleanupCountRef.current === 1) {
         console.log("[Chat] skip first dev cleanup abort (StrictMode)");
         return;
       }
-
       abortCurrent("unmount cleanup");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,20 +128,16 @@ export default function Chat({
     if (lockRef.current) return;
     lockRef.current = true;
 
-    // If a request is still active, abort it (safety).
-    // (Usually isStreaming already disables submit, but keep this robust.)
-    if (abortRef.current) {
-      abortCurrent("submit: abort previous request");
+    // abort previous request ONLY if streaming is actually active
+    if (abortRef.current && isStreamingRef.current) {
+      abortCurrent("submit: abort previous (only if streaming)");
     }
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     controller.signal.addEventListener("abort", () => {
-      console.log(
-        "[Chat] controller aborted. reason:",
-        abortReasonRef.current
-      );
+      console.log("[Chat] controller aborted. reason:", abortReasonRef.current);
     });
 
     setIsStreaming(true);
@@ -212,11 +211,13 @@ export default function Chat({
 
         onError: (err) => {
           finalize();
+
+          // ✅ aborted는 "정상 취소"로 보고 UI에 에러로 표시하지 않음
+          if (err === "aborted") return;
+
           setMessages((prev) => {
             const next = [...prev];
             const lastIdx = next.length - 1;
-
-            // aborted면 사용자에게 너무 거슬리게 안 보여주고 싶으면 여기서 메시지 바꿔도 됨
             const msg = `Error: ${err}`;
 
             if (next[lastIdx]?.role === "assistant") {
