@@ -432,7 +432,6 @@ async function tryOpenAIStreamToSSE(
     STREAM_HEADER_TIMEOUT_MS
   );
 
-  // ✅ header timeout + client abort + total abort 모두 결합
   const combined = AbortSignal.any([signal, headerAC.signal]);
 
   try {
@@ -514,11 +513,53 @@ async function tryOpenAIStreamToSSE(
 }
 
 /**
- * ===== Mode / Slot parsing =====
+ * ===== Mode / Slot parsing (REFAC: hybrid for slots) =====
  */
-function parseLeadingChoice(message: string): number | null {
-  const match = message.trim().match(/^([1-5])(?:\b|\s|[).:-])/);
-  return match ? Number(match[1]) : null;
+
+/** normalize for keyword matching (remove spaces) */
+function normalize(s: string) {
+  return s.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+/** ✅ mode 선택은 "숫자만 단독"일 때만 인정 (3개월/4가지 오인식 방지) */
+function parseModeChoiceOnly(message: string): number | null {
+  const s = message.trim();
+  const m = s.match(/^([1-5])(?:[).:\-])?\s*$/);
+  return m ? Number(m[1]) : null;
+}
+
+/** 슬롯용: 숫자 단독이면 number, 아니면 null */
+function parseNumericOnly(message: string): number | null {
+  const s = message.trim();
+  const m = s.match(/^(\d+)\s*$/);
+  return m ? Number(m[1]) : null;
+}
+
+/** 하이브리드(숫자+키워드+문장) 파서 */
+function parseChoiceHybrid<T extends string>(
+  message: string,
+  lang: Lang,
+  maps: { ko: Record<string, T>; en: Record<string, T> },
+  numeric?: Record<number, T>
+): T | null {
+  const raw = message.trim();
+
+  // 1) numeric mapping (slot 단계에서만 사용)
+  if (numeric) {
+    const n = parseNumericOnly(raw);
+    if (n != null && numeric[n]) return numeric[n];
+  }
+
+  // 2) keyword mapping
+  const key = normalize(raw);
+  const map = lang === "ko" ? maps.ko : maps.en;
+  if (map[key]) return map[key];
+
+  // 3) substring fallback for sentence inputs
+  for (const [k, v] of Object.entries(map)) {
+    if (k.length >= 2 && key.includes(k)) return v; // v는 T
+  }
+  return null;
 }
 
 function ensureSession(sessionId: string): SessionState {
@@ -542,41 +583,244 @@ function modeFromChoice(n: number): Mode {
   return "chat";
 }
 
+/** 슬롯 질문 문구: 숫자/키워드 둘 다 허용 */
 function nextQuestionForMode(
   mode: Mode,
   lang: Lang,
   state: SessionState
 ): string | null {
+  const ko = (s: string) => s;
+  const en = (s: string) => s;
+
   if (lang === "ko") {
     switch (mode) {
       case "profile":
-        return "좋아요. 어느 정도로 볼까요?\n1) 요약\n2) 자세히";
-      case "fortune":
-        return "좋아요. 기간은 어느 쪽이야?\n1) 이번 주\n2) 이번 달\n3) 2026년 상반기";
+        return "좋아요. 어느 정도로 볼까요? (번호/단어 둘 다 가능)\n1) 요약 (요약/summary)\n2) 자세히 (자세히/상세/detailed)";
+      case "fortune": {
+        const f = state.slots?.fortune;
+        if (!f?.timeframe)
+          return "좋아요. 기간은 어느 쪽이야? (번호/단어)\n1) 이번 주 (주/이번주/week)\n2) 이번 달 (달/이번달/month)\n3) 2026년 상반기 (상반기/반년/6개월/halfyear)";
+        if (!f?.topic)
+          return "주제는 뭐로 볼까? (번호/단어)\n1) 커리어 (커리어/직장/일/career)\n2) 연애 (연애/사랑/love)\n3) 돈 (돈/금전/money)\n4) 건강 (건강/health)";
+        return null;
+      }
       case "career":
-        return "좋아요. 지금 목표는 뭐야?\n1) 취업/지원\n2) 레주메\n3) 면접\n4) 포트폴리오";
+        return "좋아요. 지금 목표는 뭐야? (번호/단어)\n1) 취업/지원 (취업/지원/job)\n2) 레주메 (레주메/이력서/resume)\n3) 면접 (면접/interview)\n4) 포트폴리오 (포트폴리오/portfolio)";
       case "love":
-        return "좋아요. 상황이 어디에 가까워?\n1) 썸/대화 중\n2) 연애 중\n3) 장기 관계\n4) 이별/정리 중";
+        return "좋아요. 상황이 어디에 가까워? (번호/단어)\n1) 썸/대화 중 (썸/대화/talking)\n2) 연애 중 (연애/dating)\n3) 장기 관계 (장기/오래/long)\n4) 이별/정리 중 (이별/정리/breakup)";
       case "chat":
       default:
         return "좋아. 지금 가장 신경 쓰이는 한 가지가 뭐야?";
     }
   }
+
+  // EN
   switch (mode) {
     case "profile":
-      return "Got it. How detailed do you want it?\n1) Summary\n2) Detailed";
-    case "fortune":
-      return "Got it. What timeframe?\n1) This week\n2) This month\n3) 2026 (first half)";
+      return en(
+        "Got it. How detailed do you want it? (number/keyword ok)\n1) Summary (summary)\n2) Detailed (detailed)"
+      );
+    case "fortune": {
+      const f = state.slots?.fortune;
+      if (!f?.timeframe)
+        return en(
+          "Got it. What timeframe? (number/keyword ok)\n1) This week (week)\n2) This month (month)\n3) 2026 (first half) (halfyear / 6months)"
+        );
+      if (!f?.topic)
+        return en(
+          "What topic should we focus on? (number/keyword ok)\n1) Career (career)\n2) Love (love)\n3) Money (money)\n4) Health (health)"
+        );
+      return null;
+    }
     case "career":
-      return "Got it. What’s your main goal?\n1) Job search\n2) Resume\n3) Interviews\n4) Portfolio";
+      return en(
+        "Got it. What’s your main goal? (number/keyword ok)\n1) Job search (job)\n2) Resume (resume)\n3) Interviews (interview)\n4) Portfolio (portfolio)"
+      );
     case "love":
-      return "Got it. Which best describes your situation?\n1) Talking stage\n2) Dating\n3) Long-term\n4) Breakup / moving on";
+      return en(
+        "Got it. Which best describes your situation? (number/keyword ok)\n1) Talking stage (talking)\n2) Dating (dating)\n3) Long-term (long)\n4) Breakup / moving on (breakup)"
+      );
     case "chat":
     default:
-      return "Okay—what’s the one thing on your mind right now?";
+      return en("Okay—what’s the one thing on your mind right now?");
   }
 }
 
+/** 하이브리드 슬롯 파서들 */
+function parseProfileDepth(
+  message: string,
+  lang: Lang
+): "summary" | "detailed" | null {
+  return parseChoiceHybrid(
+    message,
+    lang,
+    {
+      ko: {
+        요약: "summary",
+        summary: "summary",
+        간단: "summary",
+        자세히: "detailed",
+        상세: "detailed",
+        detailed: "detailed",
+      },
+      en: {
+        summary: "summary",
+        brief: "summary",
+        detailed: "detailed",
+        detail: "detailed",
+      },
+    },
+    { 1: "summary", 2: "detailed" }
+  );
+}
+
+function parseFortuneTimeframe(
+  message: string,
+  lang: Lang
+): "week" | "month" | "half_year" | null {
+  return parseChoiceHybrid(
+    message,
+    lang,
+    {
+      ko: {
+        주: "week",
+        이번주: "week",
+        주간: "week",
+        달: "month",
+        이번달: "month",
+        월간: "month",
+        상반기: "half_year",
+        반년: "half_year",
+        "6개월": "half_year",
+        육개월: "half_year",
+        halfyear: "half_year",
+      },
+      en: {
+        week: "week",
+        thisweek: "week",
+        month: "month",
+        thismonth: "month",
+        halfyear: "half_year",
+        "6months": "half_year",
+        sixmonths: "half_year",
+      },
+    },
+    { 1: "week", 2: "month", 3: "half_year" }
+  );
+}
+
+function parseFortuneTopic(
+  message: string,
+  lang: Lang
+): "career" | "love" | "money" | "health" | null {
+  return parseChoiceHybrid(
+    message,
+    lang,
+    {
+      ko: {
+        커리어: "career",
+        직장: "career",
+        일: "career",
+        career: "career",
+        work: "career",
+        연애: "love",
+        사랑: "love",
+        애정: "love",
+        love: "love",
+        돈: "money",
+        금전: "money",
+        재물: "money",
+        money: "money",
+        건강: "health",
+        health: "health",
+      },
+      en: {
+        career: "career",
+        work: "career",
+        love: "love",
+        relationship: "love",
+        money: "money",
+        finance: "money",
+        health: "health",
+      },
+    },
+    { 1: "career", 2: "love", 3: "money", 4: "health" }
+  );
+}
+
+function parseCareerGoal(
+  message: string,
+  lang: Lang
+): "job_search" | "resume" | "interviews" | "portfolio" | null {
+  return parseChoiceHybrid(
+    message,
+    lang,
+    {
+      ko: {
+        취업: "job_search",
+        지원: "job_search",
+        구직: "job_search",
+        job: "job_search",
+        레주메: "resume",
+        이력서: "resume",
+        resume: "resume",
+        면접: "interviews",
+        인터뷰: "interviews",
+        interview: "interviews",
+        포트폴리오: "portfolio",
+        portfolio: "portfolio",
+      },
+      en: {
+        job: "job_search",
+        jobsearch: "job_search",
+        apply: "job_search",
+        resume: "resume",
+        interview: "interviews",
+        interviews: "interviews",
+        portfolio: "portfolio",
+      },
+    },
+    { 1: "job_search", 2: "resume", 3: "interviews", 4: "portfolio" }
+  );
+}
+
+function parseLoveStage(
+  message: string,
+  lang: Lang
+): "talking" | "dating" | "long_term" | "breakup" | null {
+  return parseChoiceHybrid(
+    message,
+    lang,
+    {
+      ko: {
+        썸: "talking",
+        대화: "talking",
+        연락: "talking",
+        talking: "talking",
+        연애: "dating",
+        dating: "dating",
+        장기: "long_term",
+        오래: "long_term",
+        장기관계: "long_term",
+        long: "long_term",
+        이별: "breakup",
+        정리: "breakup",
+        breakup: "breakup",
+      },
+      en: {
+        talking: "talking",
+        dating: "dating",
+        long: "long_term",
+        longterm: "long_term",
+        breakup: "breakup",
+        movingon: "breakup",
+      },
+    },
+    { 1: "talking", 2: "dating", 3: "long_term", 4: "breakup" }
+  );
+}
+
+/** 슬롯 채우기: 이제 숫자+키워드 모두 처리 */
 function handleSlotFill(
   state: SessionState,
   body: Body
@@ -585,113 +829,89 @@ function handleSlotFill(
   const mode = state.mode;
   if (!mode) return { handled: false };
 
-  const choice = parseLeadingChoice(body.message);
+  // chat은 슬롯 없음
+  if (mode === "chat") return { handled: false };
 
+  // profile
   if (mode === "profile") {
-    if (!state.slots?.profile?.depth) {
-      if (!choice || (choice !== 1 && choice !== 2)) {
+    const p = state.slots!.profile ?? {};
+    if (!p.depth) {
+      const depth = parseProfileDepth(body.message, lang);
+      if (!depth)
         return {
           handled: true,
-          reply:
-            lang === "ko"
-              ? "번호로 골라줘.\n1) 요약\n2) 자세히"
-              : "Please choose a number.\n1) Summary\n2) Detailed",
+          reply: nextQuestionForMode(mode, lang, state) ?? "",
         };
-      }
-      state.slots!.profile = { depth: choice === 1 ? "summary" : "detailed" };
+      p.depth = depth;
+      state.slots!.profile = p;
       return { handled: true, reply: "" };
     }
     return { handled: false };
   }
 
+  // fortune: timeframe -> topic
   if (mode === "fortune") {
     const f = state.slots!.fortune ?? {};
+
     if (!f.timeframe) {
-      if (!choice || (choice !== 1 && choice !== 2 && choice !== 3)) {
+      const tf = parseFortuneTimeframe(body.message, lang);
+      if (!tf)
         return {
           handled: true,
-          reply:
-            lang === "ko"
-              ? "기간을 번호로 골라줘.\n1) 이번 주\n2) 이번 달\n3) 2026년 상반기"
-              : "Choose a timeframe.\n1) This week\n2) This month\n3) 2026 (first half)",
+          reply: nextQuestionForMode(mode, lang, state) ?? "",
         };
-      }
-      f.timeframe =
-        choice === 1 ? "week" : choice === 2 ? "month" : "half_year";
+      f.timeframe = tf;
       state.slots!.fortune = f;
+      // 다음 질문(주제)로 진행
       return {
         handled: true,
-        reply:
-          lang === "ko"
-            ? "주제는 뭐로 볼까?\n1) 커리어\n2) 연애\n3) 돈\n4) 건강"
-            : "What topic should we focus on?\n1) Career\n2) Love\n3) Money\n4) Health",
+        reply: nextQuestionForMode(mode, lang, state) ?? "",
       };
     }
+
     if (!f.topic) {
-      const c = parseLeadingChoice(body.message);
-      if (!c || c < 1 || c > 4) {
+      const topic = parseFortuneTopic(body.message, lang);
+      if (!topic)
         return {
           handled: true,
-          reply:
-            lang === "ko"
-              ? "주제를 번호로 골라줘.\n1) 커리어\n2) 연애\n3) 돈\n4) 건강"
-              : "Choose a topic.\n1) Career\n2) Love\n3) Money\n4) Health",
+          reply: nextQuestionForMode(mode, lang, state) ?? "",
         };
-      }
-      f.topic =
-        c === 1 ? "career" : c === 2 ? "love" : c === 3 ? "money" : "health";
+      f.topic = topic;
       state.slots!.fortune = f;
       return { handled: true, reply: "" };
     }
+
     return { handled: false };
   }
 
+  // career: goal
   if (mode === "career") {
     const c = state.slots!.career ?? {};
     if (!c.goal) {
-      if (!choice || choice < 1 || choice > 4) {
+      const goal = parseCareerGoal(body.message, lang);
+      if (!goal)
         return {
           handled: true,
-          reply:
-            lang === "ko"
-              ? "목표를 번호로 골라줘.\n1) 취업/지원\n2) 레주메\n3) 면접\n4) 포트폴리오"
-              : "Choose a goal.\n1) Job search\n2) Resume\n3) Interviews\n4) Portfolio",
+          reply: nextQuestionForMode(mode, lang, state) ?? "",
         };
-      }
-      c.goal =
-        choice === 1
-          ? "job_search"
-          : choice === 2
-          ? "resume"
-          : choice === 3
-          ? "interviews"
-          : "portfolio";
+      c.goal = goal;
       state.slots!.career = c;
       return { handled: true, reply: "" };
     }
     return { handled: false };
   }
 
+  // love: stage
   if (mode === "love") {
     const l = state.slots!.love ?? {};
     if (!l.stage) {
-      if (!choice || choice < 1 || choice > 4) {
+      const stage = parseLoveStage(body.message, lang);
+      if (!stage)
         return {
           handled: true,
-          reply:
-            lang === "ko"
-              ? "상황을 번호로 골라줘.\n1) 썸/대화 중\n2) 연애 중\n3) 장기 관계\n4) 이별/정리 중"
-              : "Choose a situation.\n1) Talking stage\n2) Dating\n3) Long-term\n4) Breakup / moving on",
+          reply: nextQuestionForMode(mode, lang, state) ?? "",
         };
-      }
-      l.stage =
-        choice === 1
-          ? "talking"
-          : choice === 2
-          ? "dating"
-          : choice === 3
-          ? "long_term"
-          : "breakup";
+      l.stage = stage;
       state.slots!.love = l;
       return { handled: true, reply: "" };
     }
@@ -747,38 +967,29 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   const ac = new AbortController();
   const totalTimer = setTimeout(() => ac.abort(), UPSTREAM_TOTAL_TIMEOUT_MS);
 
-  // ✅ 클라이언트 종료 → OpenAI 호출도 바로 중단
   req.on("close", () => ac.abort());
   res.on("close", () => ac.abort());
 
   try {
-    // 1) mode 선택
+    // 1) mode 선택: 숫자 "단독"만 메뉴로 인정, 아니면 chat로 자동 진입
     if (!state.mode) {
-      const n = parseLeadingChoice(body.message);
+      const n = parseModeChoiceOnly(body.message);
       if (n && n >= 1 && n <= 5) {
         state.mode = modeFromChoice(n);
 
-        // 모드별 추가 질문이 필요하면 질문하고 종료
         const q = nextQuestionForMode(state.mode, body.lang, state);
         if (q) return finish(() => sendPlainAssistant(res, q));
       } else {
-        // ✅ 숫자 선택이 없으면 자동으로 일반 상담(chat)으로 진입
         state.mode = "chat";
-        // 슬롯 필요 없음 → 아래에서 바로 LLM 호출로 진행
       }
     }
 
-    // 2) slot 채우기
+    // 2) slot 채우기(하이브리드)
     const slot = handleSlotFill(state, body);
     if (slot.handled) {
-      if (slot.reply)
-        return finish(() =>
-          sendPlainAssistant(
-            res,
-            slot.reply ??
-              (body.lang === "ko" ? "좋아. 계속 말해줘." : "Okay—go on.")
-          )
-        );
+      if (slot.reply != null && slot.reply.length > 0) {
+        return finish(() => sendPlainAssistant(res, slot.reply!));
+      }
 
       if (!isReadyToCallLLM(state)) {
         const q = nextQuestionForMode(state.mode!, body.lang, state);
@@ -789,7 +1000,7 @@ chatRouter.post("/", async (req: Request, res: Response) => {
           )
         );
       }
-      // 슬롯 완성 → 아래 LLM 호출로 진행
+      // 슬롯 완성 → 아래 LLM 호출
     }
 
     // 3) 슬롯 부족이면 질문
