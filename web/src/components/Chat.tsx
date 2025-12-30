@@ -72,9 +72,11 @@ export default function Chat({
         console.log("[Chat] skip first dev cleanup abort (StrictMode)");
         return;
       }
-      abortCurrent("unmount cleanup");
+
+      if (isStreamingRef.current) {
+        abortCurrent("unmount cleanup (only if streaming)");
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const placeholder = useMemo(() => {
