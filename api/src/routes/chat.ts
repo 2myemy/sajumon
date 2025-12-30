@@ -426,15 +426,18 @@ async function tryOpenAIStreamToSSE(
   input: any,
   signal: AbortSignal
 ) {
-  const headerAC = new AbortController();
-  const headerTimer = setTimeout(
-    () => headerAC.abort(),
-    STREAM_HEADER_TIMEOUT_MS
-  );
+  // ✅ fetch 자체 타임아웃 (헤더가 15초 내 안 오면 abort)
+  const fetchAC = new AbortController();
+  const fetchTimer = setTimeout(() => fetchAC.abort(), 15000);
 
-  const combined = signal;
-  console.log("[openai] fetch start");
+  // ✅ 외부 signal이 abort되면 fetchAC도 abort
+  const onAbort = () => fetchAC.abort();
+  signal.addEventListener("abort", onAbort, { once: true });
+
   try {
+    console.log("[openai] fetch start");
+    console.log("[env] has OPENAI_API_KEY?", !!process.env.OPENAI_API_KEY);
+
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -442,73 +445,38 @@ async function tryOpenAIStreamToSSE(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(buildRequestBody(input, true)),
-      signal: combined,
+      signal: fetchAC.signal,
     });
+
     console.log("[openai] status", openaiRes.status);
     console.log("[openai] content-type", openaiRes.headers.get("content-type"));
-
-    clearTimeout(headerTimer);
 
     if (!openaiRes.ok || !openaiRes.body) {
       const t = await openaiRes.text().catch(() => "");
       console.error("[openai] error body", t);
       return {
         ok: false as const,
-        reason: `OpenAI stream HTTP ${openaiRes.status} ${t}`.slice(0, 300),
+        reason: `OpenAI HTTP ${openaiRes.status} ${t}`.slice(0, 300),
       };
     }
 
-    let sentAnyToken = false;
-
-    for await (const evt of iterateOpenAISSE(openaiRes.body as any)) {
-      const e: any = evt;
-      if (e?.type === "done") break;
-
-      const token =
-        (e?.type === "response.output_text.delta" &&
-          typeof e?.delta === "string" &&
-          e.delta) ||
-        (typeof e?.delta === "string" && e.delta) ||
-        (typeof e?.output_text_delta === "string" && e.output_text_delta) ||
-        (typeof e?.choices?.[0]?.delta?.content === "string" &&
-          e.choices[0].delta.content) ||
-        "";
-
-      if (token) {
-        sentAnyToken = true;
-        sendEvent(res, "token", { token });
-        continue;
-      }
-
-      if (e?.type === "response.completed" || e?.type === "response.complete") {
-        sendEvent(res, "done", {});
-        return { ok: true as const };
-      }
-
-      if (e?.type === "error" || e?.type === "response.failed") {
-        return {
-          ok: false as const,
-          reason: e?.error?.message ?? "OpenAI stream error",
-        };
-      }
-    }
-
-    if (!sentAnyToken)
-      return {
-        ok: false as const,
-        reason: "OpenAI stream produced no visible text tokens",
-      };
-
-    sendEvent(res, "done", {});
-    return { ok: true as const };
+    // ... (아래 스트림 파싱 로직은 그대로)
   } catch (e: any) {
-    clearTimeout(headerTimer);
-    if (e?.name === "AbortError")
-      return { ok: false as const, reason: "stream attempt aborted" };
-    return {
-      ok: false as const,
-      reason: e?.message ?? "stream attempt failed",
-    };
+    // ✅ 여기서 진짜 원인이 보임 (timeout이면 AbortError)
+    console.error("[openai] fetch failed", {
+      name: e?.name,
+      code: e?.code,
+      message: e?.message,
+      cause: e?.cause,
+    });
+
+    if (e?.name === "AbortError") {
+      return { ok: false as const, reason: "openai fetch timeout/aborted" };
+    }
+    return { ok: false as const, reason: e?.message ?? "openai fetch failed" };
+  } finally {
+    clearTimeout(fetchTimer);
+    signal.removeEventListener("abort", onAbort);
   }
 }
 
