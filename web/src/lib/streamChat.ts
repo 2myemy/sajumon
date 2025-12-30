@@ -126,7 +126,6 @@ export async function streamChat(params: {
     }
     params.onError(e?.message ?? "stream error");
   } finally {
-    // once:true라서 굳이 remove 안 해도 되지만, 안전하게 해도 됨
     params.signal?.removeEventListener("abort", abortFromOutside);
   }
 }

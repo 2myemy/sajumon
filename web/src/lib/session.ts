@@ -1,4 +1,3 @@
-// src/lib/session.ts
 const KEY = "sajumon_session_id";
 
 function newId() {

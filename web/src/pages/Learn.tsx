@@ -228,14 +228,6 @@ export default function Learn() {
             ))}
           </div>
         </div>
-
-        {/* Time note */}
-        <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-950/40 p-4">
-          <div className="text-sm font-semibold">Do I need my birth time?</div>
-          <p className="mt-1 text-sm text-zinc-400">
-            No. A birthday is enough to get your Ganji character.
-          </p>
-        </div>
       </section>
 
       {/* Bottom CTA */}

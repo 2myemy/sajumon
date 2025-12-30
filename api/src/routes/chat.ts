@@ -1,4 +1,3 @@
-// src/routes/chat.ts
 import express from "express";
 import type { Request, Response } from "express";
 import { z } from "zod";

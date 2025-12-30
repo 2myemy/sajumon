@@ -29,7 +29,7 @@ export default function Chat({
 2) Fortune
 3) Work / career
 4) Relationships
-5) Just talk`,
+5) Just chat`,
     },
   ]);
   const [input, setInput] = useState("");
