@@ -60,7 +60,7 @@ const chatRouter = express.Router();
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "https://sajumon.netlify.app";
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
 const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "300");
-const STREAM_HEADER_TIMEOUT_MS = 15000;
+const STREAM_HEADER_TIMEOUT_MS = 45000;
 const UPSTREAM_TOTAL_TIMEOUT_MS = 180000;
 
 /**
