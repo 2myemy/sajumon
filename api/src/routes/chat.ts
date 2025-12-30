@@ -445,11 +445,14 @@ async function tryOpenAIStreamToSSE(
       body: JSON.stringify(buildRequestBody(input, true)),
       signal: combined,
     });
+    console.log("[openai] status", openaiRes.status);
+    console.log("[openai] content-type", openaiRes.headers.get("content-type"));
 
     clearTimeout(headerTimer);
 
     if (!openaiRes.ok || !openaiRes.body) {
       const t = await openaiRes.text().catch(() => "");
+      console.error("[openai] error body", t);
       return {
         ok: false as const,
         reason: `OpenAI stream HTTP ${openaiRes.status} ${t}`.slice(0, 300),
