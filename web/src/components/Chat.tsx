@@ -65,7 +65,7 @@ export default function Chat({
     const c = abortRef.current;
     if (!c) return;
     if (!c.signal.aborted) c.abort(reason);
-    abortRef.current = null;
+    abortReasonRef.current = reason;
   };
 
   // React 18 StrictMode(dev): mount -> cleanup -> mount (fake unmount) once
