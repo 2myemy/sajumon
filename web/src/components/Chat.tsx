@@ -213,6 +213,8 @@ export default function Chat({
 
         onError: (err) => {
           finalize();
+          console.log("[Chat] onError:", err);
+          console.log("[Chat] last assistant:", assistantText.slice(0, 120));
 
           // ✅ aborted는 "정상 취소"로 보고 UI에 에러로 표시하지 않음
           if (err === "aborted") return;
