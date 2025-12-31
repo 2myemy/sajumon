@@ -37,38 +37,23 @@ export default function Chat({
 
   const animal = profile?.animal;
 
-  // submit lock + current request controller
+  // Submit lock + current request controller
   const lockRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // keep latest messages in a ref for synchronous history building
+  // Ensure we only "end" once per request
+  const endedRef = useRef(false);
+
+  // Keep latest messages in a ref (avoid setState race when building history)
   const messagesRef = useRef<Msg[]>(messages);
   useEffect(() => {
-    resetSessionId();
+    messagesRef.current = messages;
+  }, [messages]);
 
-    return () => {
-      // dev strictmode first cleanup skip
-      cleanupCountRef.current += 1;
-      if (isDev && cleanupCountRef.current === 1) return;
-
-      // abort only if a request exists
-      if (abortRef.current) {
-        try {
-          abortRef.current.abort("unmount");
-        } catch {}
-      }
-    };
+  useEffect(() => {
+    console.log("[Chat] mounted");
+    return () => console.log("[Chat] unmounted");
   }, []);
-
-  // abort tracing
-  const abortReasonRef = useRef<string | null>(null);
-  const abortCurrent = (reason: string) => {
-    console.log("[Chat] abortCurrent called:", reason);
-    const c = abortRef.current;
-    if (!c) return;
-    if (!c.signal.aborted) c.abort(reason);
-    abortReasonRef.current = reason;
-  };
 
   // React 18 StrictMode(dev): mount -> cleanup -> mount (fake unmount) once
   const cleanupCountRef = useRef(0);
@@ -82,8 +67,11 @@ export default function Chat({
         return;
       }
 
-      if (isStreamingRef.current) {
-        abortCurrent("unmount cleanup (only if streaming)");
+      // Always abort any in-flight request on real unmount
+      if (abortRef.current) {
+        try {
+          abortRef.current.abort("unmount");
+        } catch {}
       }
     };
   }, []);
@@ -135,10 +123,14 @@ export default function Chat({
     const text = input.trim();
     if (!text) return;
 
+    // prevent double-submit
     if (lockRef.current) return;
     lockRef.current = true;
 
-    // ✅ always abort previous request if exists (simple & reliable)
+    // reset end-guard for this request
+    endedRef.current = false;
+
+    // Always abort previous request if exists (simple & reliable)
     if (abortRef.current) {
       try {
         abortRef.current.abort("submit: new request");
@@ -152,9 +144,14 @@ export default function Chat({
     setInput("");
 
     const sessionId = getSessionId();
-    const historyToSend = messagesRef.current.slice(-10);
 
-    // optimistic UI
+    // build history synchronously from ref (no setState race)
+    const historyToSend = messagesRef.current.slice(-10).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    // optimistic UI: user msg + assistant placeholder
     const userMsg: Msg = { role: "user", content: text };
     const assistantPlaceholder: Msg = {
       role: "assistant",
@@ -169,9 +166,14 @@ export default function Chat({
 
     let assistantText = "";
 
-    const end = () => {
+    const endOnce = () => {
+      if (endedRef.current) return;
+      endedRef.current = true;
+
       setIsStreaming(false);
       lockRef.current = false;
+
+      // only clear abortRef if it's still our controller
       if (abortRef.current === controller) abortRef.current = null;
     };
 
@@ -190,7 +192,6 @@ export default function Chat({
             const next = [...prev];
             const lastIdx = next.length - 1;
 
-            // last should be assistant placeholder
             if (next[lastIdx]?.role === "assistant") {
               next[lastIdx] = {
                 ...(next[lastIdx] as Msg),
@@ -216,17 +217,16 @@ export default function Chat({
         },
 
         onDone: () => {
-          end();
+          endOnce();
         },
 
         onError: (err) => {
-          // ✅ abort는 정상 취소: placeholder 제거(UX 깔끔)
+          // aborted는 정상 취소: 빈 placeholder는 제거해서 UX 깔끔하게
           if (err === "aborted") {
             setMessages((prev) => {
               const next = [...prev];
               const lastIdx = next.length - 1;
 
-              // If last assistant is still empty, remove it
               if (
                 next[lastIdx]?.role === "assistant" &&
                 (next[lastIdx] as Msg).content.trim() === ""
@@ -235,7 +235,8 @@ export default function Chat({
               }
               return next;
             });
-            end();
+
+            endOnce();
             return;
           }
 
@@ -260,12 +261,11 @@ export default function Chat({
             return next;
           });
 
-          end();
+          endOnce();
         },
       });
     } finally {
-      // ✅ DO NOT call finalize/end here (avoids race)
-      // end() is handled by onDone/onError exactly once.
+      // DO NOT end here (avoids race). endOnce runs via onDone/onError.
     }
   };
 
