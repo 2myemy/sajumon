@@ -1,5 +1,4 @@
 export type ChatMsg = { role: "user" | "assistant"; content: string };
-
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 type SSEParsed = { event?: string; data?: string };
@@ -9,10 +8,9 @@ function parseSSEChunk(chunk: string): SSEParsed {
   let event: string | undefined;
   const dataLines: string[] = [];
 
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd();
+  for (const line of lines) {
     if (!line) continue;
-    if (line.startsWith(":")) continue; // ping/comment
+    if (line.startsWith(":")) continue; // comment / ping
 
     if (line.startsWith("event:")) {
       event = line.slice("event:".length).trim();
@@ -27,12 +25,10 @@ function parseSSEChunk(chunk: string): SSEParsed {
   const data = dataLines.length ? dataLines.join("\n") : undefined;
   return { event, data };
 }
-
 export async function streamChat(params: {
   sessionId: string;
   archetypeId: string;
   lang: "en" | "ko";
-  mode: "profile" | "chat";
   message: string;
   history: ChatMsg[];
   onToken: (t: string) => void;
@@ -46,13 +42,10 @@ export async function streamChat(params: {
   }
 
   const controller = new AbortController();
-
-  // external abort -> internal abort
-  const outside = params.signal;
-  const abortFromOutside = () => controller.abort("aborted-from-outside");
-  if (outside) {
-    if (outside.aborted) controller.abort("outside-already-aborted");
-    else outside.addEventListener("abort", abortFromOutside, { once: true });
+  const abortFromOutside = () => controller.abort();
+  if (params.signal) {
+    if (params.signal.aborted) controller.abort();
+    else params.signal.addEventListener("abort", abortFromOutside, { once: true });
   }
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -66,7 +59,6 @@ export async function streamChat(params: {
         sessionId: params.sessionId,
         archetypeId: params.archetypeId,
         lang: params.lang,
-        mode: params.mode,
         message: params.message,
         history: params.history,
       }),
@@ -75,7 +67,7 @@ export async function streamChat(params: {
 
     if (!res.ok || !res.body) {
       const txt = await res.text().catch(() => "");
-      params.onError(`HTTP ${res.status} ${txt}`.slice(0, 300));
+      params.onError(`HTTP ${res.status} ${txt}`.slice(0, 200));
       return;
     }
 
@@ -89,10 +81,9 @@ export async function streamChat(params: {
 
       buffer += decoder.decode(value, { stream: true });
 
-      // Normalize CRLF -> LF
+      // CRLF normalize (important)
       if (buffer.includes("\r")) buffer = buffer.replace(/\r/g, "");
 
-      // SSE frames separated by a blank line
       const parts = buffer.split("\n\n");
       buffer = parts.pop() ?? "";
 
@@ -106,19 +97,14 @@ export async function streamChat(params: {
             const obj = JSON.parse(data);
             const token = obj?.token;
             if (typeof token === "string" && token.length) params.onToken(token);
-          } catch {
-            // ignore malformed token payload
-          }
+          } catch {}
           continue;
         }
 
         if (event === "done") {
           sawDone = true;
-          try {
-            await reader.cancel();
-          } catch {}
+          await reader.cancel().catch(() => {});
           reader = null;
-
           params.onDone();
           return;
         }
@@ -131,17 +117,15 @@ export async function streamChat(params: {
               msg = obj?.error ?? "unknown";
             } catch {}
           }
-          try {
-            await reader.cancel();
-          } catch {}
+          await reader.cancel().catch(() => {});
           reader = null;
-
           params.onError(msg);
           return;
         }
       }
     }
 
+    // EOF without done = treat as error (helps debugging)
     if (!sawDone) {
       params.onError("stream closed without done");
       return;
@@ -149,12 +133,12 @@ export async function streamChat(params: {
 
     params.onDone();
   } catch (e: any) {
-    // AbortError = normal cancellation (unmount / navigation / stop button)
+    // AbortError is normal cancellation: be silent
     if (e?.name === "AbortError") return;
 
     params.onError(e?.message ?? "stream error");
   } finally {
-    if (outside) outside.removeEventListener("abort", abortFromOutside);
+    params.signal?.removeEventListener("abort", abortFromOutside);
     if (reader) {
       try {
         await reader.cancel();
