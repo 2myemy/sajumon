@@ -56,9 +56,9 @@ export default function Chat({
   // abort tracing
   const abortReasonRef = useRef<string | null>(null);
   const abortCurrent = (reason: string) => {
+    console.log("[Chat] abortCurrent called:", reason);
     abortReasonRef.current = reason;
-    console.log("[Chat] abortCurrent:", reason);
-    abortRef.current?.abort();
+    abortRef.current?.abort(reason);
   };
 
   // React 18 StrictMode(dev): mount -> cleanup -> mount (fake unmount) once

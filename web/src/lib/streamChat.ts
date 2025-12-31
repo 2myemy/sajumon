@@ -47,7 +47,8 @@ export async function streamChat(params: {
   const abortFromOutside = () => controller.abort();
   if (params.signal) {
     if (params.signal.aborted) controller.abort();
-    else params.signal.addEventListener("abort", abortFromOutside, { once: true });
+    else
+      params.signal.addEventListener("abort", abortFromOutside, { once: true });
   }
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -99,7 +100,8 @@ export async function streamChat(params: {
           try {
             const obj = JSON.parse(data);
             const token = obj?.token;
-            if (typeof token === "string" && token.length) params.onToken(token);
+            if (typeof token === "string" && token.length)
+              params.onToken(token);
           } catch {
             // ignore
           }
@@ -133,6 +135,10 @@ export async function streamChat(params: {
     params.onDone();
   } catch (e: any) {
     if (e?.name === "AbortError") {
+      console.log(
+        "[streamChat] aborted. reason:",
+        (controller.signal as any).reason
+      );
       params.onError("aborted");
       return;
     }
