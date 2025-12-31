@@ -1,42 +1,58 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { CharacterProfile } from "../lib/types";
 import { streamChat, type ChatMsg } from "../lib/streamChat";
 
+type Mode = "profile" | "chat";
+
 type Props = {
-  sessionId: string;
-  archetypeId: string;
-  lang: "en" | "ko";
+  profile: CharacterProfile | null; // from Home.tsx
+  isReady: boolean;                 // from Home.tsx (ganji && profile)
+  lang?: "en" | "ko";               // EN-first default
 };
 
-export default function Chat({ sessionId, archetypeId, lang }: Props) {
+export default function Chat({ profile, isReady, lang = "en" }: Props) {
+  // Your Home.tsx does: const profile = getByKey(ganji.key)
+  // So archetypeId is very likely profile.key (adjust if your type uses id/slug instead)
+  const archetypeId = (profile as any)?.key ?? "";
+  const [mode, setMode] = useState<Mode>("profile");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // current streaming controller (owned by Chat)
+  // New session per character (clean separation)
+  const sessionIdRef = useRef<string>("");
+  const lastArchetypeRef = useRef<string>("");
+
+  // Active request controller
   const abortRef = useRef<AbortController | null>(null);
 
-  // rAF batching for tokens (prevents too many setStates)
+  // Token batching
   const tokenBufferRef = useRef("");
   const rafRef = useRef<number | null>(null);
 
-  const canSend = useMemo(() => {
-    return !!input.trim() && !isStreaming;
-  }, [input, isStreaming]);
+  const abortCurrent = (reason: string) => {
+    const c = abortRef.current;
+    if (!c) return;
+    if (!c.signal.aborted) {
+      console.log("[chat] abortCurrent:", reason);
+      c.abort(reason);
+    }
+    abortRef.current = null;
+  };
 
-  const flushTokenBuffer = () => {
-    if (!tokenBufferRef.current) return;
+  const flushTokens = () => {
     const chunk = tokenBufferRef.current;
+    if (!chunk) return;
     tokenBufferRef.current = "";
 
     setMessages((prev) => {
       if (!prev.length) return prev;
-
       const last = prev[prev.length - 1];
       if (last.role !== "assistant") return prev;
 
       const next = prev.slice(0, -1);
-      next.push({ ...last, content: last.content + chunk });
+      next.push({ role: "assistant", content: last.content + chunk });
       return next;
     });
   };
@@ -45,24 +61,12 @@ export default function Chat({ sessionId, archetypeId, lang }: Props) {
     if (rafRef.current != null) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      flushTokenBuffer();
+      flushTokens();
     });
-  };
-
-  const abortCurrent = (reason: string) => {
-    const c = abortRef.current;
-    if (!c) return;
-    if (!c.signal.aborted) {
-      // (optional) debug
-      console.log("[Chat] abortCurrent:", reason);
-      c.abort(reason);
-    }
-    abortRef.current = null;
   };
 
   useEffect(() => {
     return () => {
-      // cleanup on unmount
       abortCurrent("unmount cleanup");
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -70,30 +74,102 @@ export default function Chat({ sessionId, archetypeId, lang }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Auto-generate character intro/profile when archetype changes.
+   * Home.tsx conditionally mounts <Chat ... /> only when ganji && profile,
+   * so this will run once per selection.
+   */
+  useEffect(() => {
+    if (!isReady || !profile || !archetypeId) return;
+
+    const changed = lastArchetypeRef.current !== archetypeId;
+    if (!changed) return;
+
+    lastArchetypeRef.current = archetypeId;
+
+    // new session for the new character
+    sessionIdRef.current = crypto.randomUUID();
+
+    abortCurrent("archetype changed -> start profile");
+    flushTokens();
+
+    setError(null);
+    setMode("profile");
+    setIsStreaming(true);
+
+    // reset conversation for new character
+    setMessages([{ role: "assistant" as const, content: "" }]);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    void streamChat({
+      sessionId: sessionIdRef.current,
+      archetypeId,
+      lang,
+      mode: "profile",
+      message: "",
+      history: [],
+      signal: controller.signal,
+
+      onToken: (t) => {
+        tokenBufferRef.current += t;
+        scheduleFlush();
+      },
+      onDone: () => {
+        flushTokens();
+        setMode("chat");
+      },
+      onError: (err) => {
+        flushTokens();
+        setError(err);
+        // Let the user chat anyway if profile generation fails
+        setMode("chat");
+      },
+    }).finally(() => {
+      flushTokens();
+      setIsStreaming(false);
+      if (abortRef.current === controller) abortRef.current = null;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, archetypeId, profile, lang]);
+
+  const canSend = useMemo(() => {
+    return isReady && mode === "chat" && !isStreaming && input.trim().length > 0;
+  }, [isReady, mode, isStreaming, input]);
+
+  const handleStop = () => {
+    abortCurrent("user stop");
+    flushTokens();
+    setIsStreaming(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isReady || !profile || !archetypeId) return;
+    if (mode !== "chat") return;
+
     const text = input.trim();
     if (!text || isStreaming) return;
 
     setError(null);
 
-    // abort any previous stream (safety)
     abortCurrent("submit: abort previous");
+    flushTokens();
 
-    // create new controller for this request
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // add user msg + placeholder assistant msg
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: text },
-      { role: "assistant", content: "" },
+      { role: "user" as const, content: text },
+      { role: "assistant" as const, content: "" },
     ]);
+
     setInput("");
     setIsStreaming(true);
 
-    // history to send (commonly: everything except the placeholder assistant)
+    // Build history snapshot; keep roles narrow with `as const`
     const historyToSend: ChatMsg[] = [
       ...messages,
       { role: "user" as const, content: text },
@@ -101,9 +177,10 @@ export default function Chat({ sessionId, archetypeId, lang }: Props) {
 
     try {
       await streamChat({
-        sessionId,
+        sessionId: sessionIdRef.current || (sessionIdRef.current = crypto.randomUUID()),
         archetypeId,
         lang,
+        mode: "chat",
         message: text,
         history: historyToSend,
         signal: controller.signal,
@@ -112,75 +189,88 @@ export default function Chat({ sessionId, archetypeId, lang }: Props) {
           tokenBufferRef.current += t;
           scheduleFlush();
         },
-
         onDone: () => {
-          // flush any leftover tokens
-          flushTokenBuffer();
+          flushTokens();
         },
-
         onError: (err) => {
-          // NOTE: streamChat will NOT call onError for AbortError by default
-          flushTokenBuffer();
+          flushTokens();
           setError(err);
         },
       });
     } finally {
-      flushTokenBuffer();
+      flushTokens();
       setIsStreaming(false);
-
-      // clear controller if it is still ours
       if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
+  if (!profile) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+        Select a character to start chatting.
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-2xl mx-auto p-4">
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Chat</h2>
+        <div>
+          <div className="text-sm font-semibold text-white">Chat</div>
+          <div className="text-xs text-white/60">
+            mode: {mode} · {isReady ? "ready" : "not ready"} · archetype:{" "}
+            {archetypeId}
+          </div>
+        </div>
+
         {isStreaming ? (
           <button
             type="button"
-            className="px-3 py-1 rounded border"
-            onClick={() => abortCurrent("user cancel button")}
+            onClick={handleStop}
+            className="rounded-xl border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/15"
           >
             Stop
           </button>
         ) : null}
       </div>
 
-      <div className="border rounded p-3 h-[420px] overflow-auto space-y-3 bg-white">
+      <div className="h-[420px] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-sm text-gray-500">Say something to start.</div>
+          <div className="text-sm text-white/60">
+            {mode === "profile" ? "Generating character profile…" : "Ready."}
+          </div>
         ) : (
           messages.map((m, idx) => (
             <div key={idx} className="whitespace-pre-wrap">
-              <div className="text-xs text-gray-500 mb-1">
+              <div className="mb-1 text-[11px] text-white/50">
                 {m.role === "user" ? "You" : "Assistant"}
               </div>
-              <div className="text-sm">{m.content}</div>
+              <div className="text-sm text-white">{m.content}</div>
             </div>
           ))
         )}
       </div>
 
       {error ? (
-        <div className="mt-2 text-sm text-red-600 whitespace-pre-wrap">
-          {error}
-        </div>
+        <div className="mt-2 text-sm text-red-200 whitespace-pre-wrap">{error}</div>
       ) : null}
 
       <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
         <input
-          className="flex-1 border rounded px-3 py-2"
-          placeholder={lang === "ko" ? "메시지를 입력하세요" : "Type a message"}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          disabled={isStreaming}
+          disabled={!isReady || isStreaming || mode !== "chat"}
+          placeholder={
+            mode === "profile"
+              ? "Generating character profile…"
+              : "Type a message"
+          }
+          className="flex-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-white/40"
         />
         <button
-          className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
           type="submit"
           disabled={!canSend}
+          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-50"
         >
           Send
         </button>
