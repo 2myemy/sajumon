@@ -25,6 +25,7 @@ function parseSSEChunk(chunk: string): SSEParsed {
   const data = dataLines.length ? dataLines.join("\n") : undefined;
   return { event, data };
 }
+
 export async function streamChat(params: {
   sessionId: string;
   archetypeId: string;
@@ -42,6 +43,7 @@ export async function streamChat(params: {
   }
 
   const controller = new AbortController();
+
   const abortFromOutside = () => controller.abort();
   if (params.signal) {
     if (params.signal.aborted) controller.abort();
@@ -49,7 +51,6 @@ export async function streamChat(params: {
   }
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-  let sawDone = false;
 
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
@@ -81,7 +82,7 @@ export async function streamChat(params: {
 
       buffer += decoder.decode(value, { stream: true });
 
-      // CRLF normalize (important)
+      // ✅ CRLF normalize
       if (buffer.includes("\r")) buffer = buffer.replace(/\r/g, "");
 
       const parts = buffer.split("\n\n");
@@ -89,6 +90,8 @@ export async function streamChat(params: {
 
       for (const part of parts) {
         const { event, data } = parseSSEChunk(part);
+
+        // ✅ event만 있으면 처리 가능 (done/error가 data 없이 올 수 있음)
         if (!event) continue;
 
         if (event === "token") {
@@ -97,12 +100,13 @@ export async function streamChat(params: {
             const obj = JSON.parse(data);
             const token = obj?.token;
             if (typeof token === "string" && token.length) params.onToken(token);
-          } catch {}
+          } catch {
+            // ignore
+          }
           continue;
         }
 
         if (event === "done") {
-          sawDone = true;
           await reader.cancel().catch(() => {});
           reader = null;
           params.onDone();
@@ -125,17 +129,13 @@ export async function streamChat(params: {
       }
     }
 
-    // EOF without done = treat as error (helps debugging)
-    if (!sawDone) {
-      params.onError("stream closed without done");
-      return;
-    }
-
+    // If server ended stream without an explicit done, still finish to avoid spinner hang.
     params.onDone();
   } catch (e: any) {
-    // AbortError is normal cancellation: be silent
-    if (e?.name === "AbortError") return;
-
+    if (e?.name === "AbortError") {
+      params.onError("aborted");
+      return;
+    }
     params.onError(e?.message ?? "stream error");
   } finally {
     params.signal?.removeEventListener("abort", abortFromOutside);
