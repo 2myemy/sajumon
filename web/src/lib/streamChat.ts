@@ -134,6 +134,7 @@ export async function streamChat(params: {
     // If server ended stream without an explicit done, still finish to avoid spinner hang.
     params.onDone();
   } catch (e: any) {
+    console.error("[streamChat] fetch/stream failed:", e);
     if (e?.name === "AbortError") {
       console.log(
         "[streamChat] aborted. reason:",
