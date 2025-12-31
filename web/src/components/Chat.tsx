@@ -44,18 +44,20 @@ export default function Chat({
   // keep latest messages in a ref for synchronous history building
   const messagesRef = useRef<Msg[]>(messages);
   useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
+    resetSessionId();
 
-  // keep latest isStreaming in a ref (avoid stale closure/timing)
-  const isStreamingRef = useRef(false);
-  useEffect(() => {
-    isStreamingRef.current = isStreaming;
-  }, [isStreaming]);
+    return () => {
+      // dev strictmode first cleanup skip
+      cleanupCountRef.current += 1;
+      if (isDev && cleanupCountRef.current === 1) return;
 
-  useEffect(() => {
-    console.log("[Chat] mounted");
-    return () => console.log("[Chat] unmounted");
+      // abort only if a request exists
+      if (abortRef.current) {
+        try {
+          abortRef.current.abort("unmount");
+        } catch {}
+      }
+    };
   }, []);
 
   // abort tracing
@@ -133,47 +135,45 @@ export default function Chat({
     const text = input.trim();
     if (!text) return;
 
-    // prevent double-submit
     if (lockRef.current) return;
     lockRef.current = true;
 
-    // abort previous request ONLY if streaming is actually active
-    if (abortRef.current && isStreamingRef.current) {
-      abortCurrent("submit: abort previous (only if streaming)");
+    // ✅ always abort previous request if exists (simple & reliable)
+    if (abortRef.current) {
+      try {
+        abortRef.current.abort("submit: new request");
+      } catch {}
     }
 
     const controller = new AbortController();
     abortRef.current = controller;
 
-    controller.signal.addEventListener("abort", () => {
-      console.log("[Chat] controller aborted. reason:", abortReasonRef.current);
-    });
-
     setIsStreaming(true);
     setInput("");
 
     const sessionId = getSessionId();
-
-    // build history synchronously from ref (no setState race)
     const historyToSend = messagesRef.current.slice(-10);
 
-    // optimistic UI: user msg + assistant placeholder
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: text },
-      {
-        role: "assistant",
-        content: "",
-        archetypeId: profile.id,
-        avatarSrc: animal.image,
-        avatarAlt: animal.name,
-        title: profile.title,
-      },
-    ]);
+    // optimistic UI
+    const userMsg: Msg = { role: "user", content: text };
+    const assistantPlaceholder: Msg = {
+      role: "assistant",
+      content: "",
+      archetypeId: profile.id,
+      avatarSrc: animal.image,
+      avatarAlt: animal.name,
+      title: profile.title,
+    };
+
+    setMessages((prev) => [...prev, userMsg, assistantPlaceholder]);
 
     let assistantText = "";
 
-    const finalize = () => setIsStreaming(false);
+    const end = () => {
+      setIsStreaming(false);
+      lockRef.current = false;
+      if (abortRef.current === controller) abortRef.current = null;
+    };
 
     try {
       await streamChat({
@@ -190,6 +190,7 @@ export default function Chat({
             const next = [...prev];
             const lastIdx = next.length - 1;
 
+            // last should be assistant placeholder
             if (next[lastIdx]?.role === "assistant") {
               next[lastIdx] = {
                 ...(next[lastIdx] as Msg),
@@ -215,17 +216,30 @@ export default function Chat({
         },
 
         onDone: () => {
-          finalize();
+          end();
         },
 
         onError: (err) => {
-          finalize();
-          console.log("[Chat] onError:", err);
-          console.log("[Chat] last assistant:", assistantText.slice(0, 120));
+          // ✅ abort는 정상 취소: placeholder 제거(UX 깔끔)
+          if (err === "aborted") {
+            setMessages((prev) => {
+              const next = [...prev];
+              const lastIdx = next.length - 1;
 
-          // ✅ aborted는 "정상 취소"로 보고 UI에 에러로 표시하지 않음
-          if (err === "aborted") return;
+              // If last assistant is still empty, remove it
+              if (
+                next[lastIdx]?.role === "assistant" &&
+                (next[lastIdx] as Msg).content.trim() === ""
+              ) {
+                next.pop();
+              }
+              return next;
+            });
+            end();
+            return;
+          }
 
+          // real errors
           setMessages((prev) => {
             const next = [...prev];
             const lastIdx = next.length - 1;
@@ -245,15 +259,13 @@ export default function Chat({
             }
             return next;
           });
+
+          end();
         },
       });
     } finally {
-      lockRef.current = false;
-
-      // only clear abortRef if it's still our controller
-      if (abortRef.current === controller) abortRef.current = null;
-
-      finalize();
+      // ✅ DO NOT call finalize/end here (avoids race)
+      // end() is handled by onDone/onError exactly once.
     }
   };
 

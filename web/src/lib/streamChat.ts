@@ -1,16 +1,17 @@
 export type ChatMsg = { role: "user" | "assistant"; content: string };
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 type SSEParsed = { event?: string; data?: string };
 
-function parseSSEChunk(chunk: string): SSEParsed {
-  const lines = chunk.split("\n");
+function parseSSEBlock(block: string): SSEParsed {
+  const lines = block.split("\n");
   let event: string | undefined;
   const dataLines: string[] = [];
 
   for (const line of lines) {
     if (!line) continue;
-    if (line.startsWith(":")) continue; // comment / ping
+    if (line.startsWith(":")) continue;
 
     if (line.startsWith("event:")) {
       event = line.slice("event:".length).trim();
@@ -42,16 +43,20 @@ export async function streamChat(params: {
     return;
   }
 
-  const controller = new AbortController();
-
-  const abortFromOutside = () => controller.abort();
-  if (params.signal) {
-    if (params.signal.aborted) controller.abort();
-    else
-      params.signal.addEventListener("abort", abortFromOutside, { once: true });
-  }
-
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+
+  // ensure callbacks fire once
+  let finished = false;
+  const safeDone = () => {
+    if (finished) return;
+    finished = true;
+    params.onDone();
+  };
+  const safeError = (err: string) => {
+    if (finished) return;
+    finished = true;
+    params.onError(err);
+  };
 
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
@@ -64,12 +69,13 @@ export async function streamChat(params: {
         message: params.message,
         history: params.history,
       }),
-      signal: controller.signal,
+      // ✅ use caller signal directly (no nested AbortController)
+      signal: params.signal,
     });
 
     if (!res.ok || !res.body) {
       const txt = await res.text().catch(() => "");
-      params.onError(`HTTP ${res.status} ${txt}`.slice(0, 200));
+      safeError(`HTTP ${res.status} ${txt}`.slice(0, 200));
       return;
     }
 
@@ -82,17 +88,14 @@ export async function streamChat(params: {
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-
-      // ✅ CRLF normalize
       if (buffer.includes("\r")) buffer = buffer.replace(/\r/g, "");
 
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() ?? "";
+      // SSE events separated by blank line
+      const blocks = buffer.split("\n\n");
+      buffer = blocks.pop() ?? "";
 
-      for (const part of parts) {
-        const { event, data } = parseSSEChunk(part);
-
-        // ✅ event만 있으면 처리 가능 (done/error가 data 없이 올 수 있음)
+      for (const block of blocks) {
+        const { event, data } = parseSSEBlock(block);
         if (!event) continue;
 
         if (event === "token") {
@@ -100,18 +103,18 @@ export async function streamChat(params: {
           try {
             const obj = JSON.parse(data);
             const token = obj?.token;
-            if (typeof token === "string" && token.length)
+            if (typeof token === "string" && token.length) {
               params.onToken(token);
+            }
           } catch {
-            // ignore
+            // ignore malformed token payloads
           }
           continue;
         }
 
         if (event === "done") {
-          await reader.cancel().catch(() => {});
-          reader = null;
-          params.onDone();
+          // server explicitly done
+          safeDone();
           return;
         }
 
@@ -120,36 +123,32 @@ export async function streamChat(params: {
           if (data) {
             try {
               const obj = JSON.parse(data);
-              msg = obj?.error ?? "unknown";
-            } catch {}
+              msg = obj?.error ?? msg;
+            } catch {
+              // ignore
+            }
           }
-          await reader.cancel().catch(() => {});
-          reader = null;
-          params.onError(msg);
+          safeError(msg);
           return;
         }
       }
     }
 
-    // If server ended stream without an explicit done, still finish to avoid spinner hang.
-    params.onDone();
+    // stream ended without explicit done
+    safeDone();
   } catch (e: any) {
-    console.error("[streamChat] fetch/stream failed:", e);
     if (e?.name === "AbortError") {
-      console.log(
-        "[streamChat] aborted. reason:",
-        (controller.signal as any).reason
-      );
-      params.onError("aborted");
+      safeError("aborted"); // treat as normal cancel
       return;
     }
-    params.onError(e?.message ?? "stream error");
+    safeError(e?.message ?? "stream error");
   } finally {
-    params.signal?.removeEventListener("abort", abortFromOutside);
     if (reader) {
       try {
         await reader.cancel();
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }
 }
