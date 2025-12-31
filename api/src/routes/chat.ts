@@ -3,6 +3,9 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import characters from "../../data/characters-60.json";
 
+/**
+ * ===== Types =====
+ */
 type Lang = "en" | "ko";
 type Mode = "profile" | "fortune" | "career" | "love" | "chat";
 
@@ -18,6 +21,7 @@ type SessionState = {
     profile?: { depth?: "summary" | "detailed" };
   };
 };
+
 const SESSION = new Map<string, SessionState>();
 
 type Persona = {
@@ -56,7 +60,10 @@ const chatRouter = express.Router();
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "https://sajumon.netlify.app";
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
 const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "300");
+
+// 서버가 클라에 첫 토큰/헤더 못 보내고 멈추는 상황 방지(상한)
 const STREAM_HEADER_TIMEOUT_MS = 45000;
+// 한 요청(세션) 당 전체 상한
 const UPSTREAM_TOTAL_TIMEOUT_MS = 180000;
 
 /**
@@ -68,9 +75,7 @@ const BodySchema = z.object({
   lang: z.enum(["en", "ko"]),
   message: z.string().min(1),
   history: z
-    .array(
-      z.object({ role: z.enum(["user", "assistant"]), content: z.string() })
-    )
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
     .default([]),
 });
 type Body = z.infer<typeof BodySchema>;
@@ -128,7 +133,8 @@ function safeJsonParse<T = any>(s: string): T | null {
 }
 
 /**
- * ===== OpenAI SSE parsing =====
+ * ===== OpenAI SSE parsing (Responses API stream) =====
+ * OpenAI streaming response is SSE-like "data: {...}\n\n"
  */
 async function* iterateOpenAISSE(body: ReadableStream<Uint8Array>) {
   const reader = body.getReader();
@@ -140,6 +146,9 @@ async function* iterateOpenAISSE(body: ReadableStream<Uint8Array>) {
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
+
+    // normalize CRLF
+    if (buffer.includes("\r")) buffer = buffer.replace(/\r/g, "");
 
     const parts = buffer.split("\n\n");
     buffer = parts.pop() ?? "";
@@ -208,41 +217,26 @@ function buildModeRules(mode: Mode, lang: Lang, state: SessionState) {
         case "profile":
           return "모드: 성격 설명. 키워드/강점/주의점을 바탕으로 간결하게 설명하고, 마지막에 짧은 확인 질문 1개를 한다.";
         case "fortune":
-          return `모드: 운세/흐름. 기간=${
-            state.slots?.fortune?.timeframe ?? "미정"
-          }, 주제=${
-            state.slots?.fortune?.topic ?? "미정"
-          } 기반. 단정적 예언 금지.`;
+          return `모드: 운세/흐름. 기간=${state.slots?.fortune?.timeframe ?? "미정"}, 주제=${state.slots?.fortune?.topic ?? "미정"} 기반. 단정적 예언 금지.`;
         case "career":
-          return `모드: 직업/진로 코칭. 목표=${
-            state.slots?.career?.goal ?? "미정"
-          } 기준으로 오늘 할 수 있는 다음 행동 제시.`;
+          return `모드: 직업/진로 코칭. 목표=${state.slots?.career?.goal ?? "미정"} 기준으로 오늘 할 수 있는 다음 행동 제시.`;
         case "love":
-          return `모드: 연애/관계 코칭. 상황=${
-            state.slots?.love?.stage ?? "미정"
-          } 기준, 감정 압박 없이 선택지 제시.`;
+          return `모드: 연애/관계 코칭. 상황=${state.slots?.love?.stage ?? "미정"} 기준, 감정 압박 없이 선택지 제시.`;
         case "chat":
         default:
           return "모드: 일반 상담. 공감은 짧게, 정리와 다음 행동 위주.";
       }
     }
+
     switch (mode) {
       case "profile":
         return "Mode: personality. Use keywords/strengths/pitfalls succinctly, then ask 1 check-in question.";
       case "fortune":
-        return `Mode: fortune/flow. timeframe=${
-          state.slots?.fortune?.timeframe ?? "unset"
-        }, topic=${
-          state.slots?.fortune?.topic ?? "unset"
-        }. No absolute predictions.`;
+        return `Mode: fortune/flow. timeframe=${state.slots?.fortune?.timeframe ?? "unset"}, topic=${state.slots?.fortune?.topic ?? "unset"}. No absolute predictions.`;
       case "career":
-        return `Mode: career coaching. goal=${
-          state.slots?.career?.goal ?? "unset"
-        }; give actionable next steps.`;
+        return `Mode: career coaching. goal=${state.slots?.career?.goal ?? "unset"}; give actionable next steps.`;
       case "love":
-        return `Mode: relationships coaching. stage=${
-          state.slots?.love?.stage ?? "unset"
-        }; no pressure; offer options.`;
+        return `Mode: relationships coaching. stage=${state.slots?.love?.stage ?? "unset"}; no pressure; offer options.`;
       case "chat":
       default:
         return "Mode: general chat. Keep it short; prioritize clarity and next steps.";
@@ -272,9 +266,7 @@ function buildCharacterSystemPrompt(body: Body, state: SessionState) {
       : `You are "${ch?.title}". Tagline: ${ch?.tagline}`
   );
   lines.push(
-    lang === "ko"
-      ? `조언 톤: ${ch?.adviceTone}`
-      : `Advice tone: ${ch?.adviceTone}`
+    lang === "ko" ? `조언 톤: ${ch?.adviceTone}` : `Advice tone: ${ch?.adviceTone}`
   );
 
   lines.push(
@@ -284,8 +276,7 @@ function buildCharacterSystemPrompt(body: Body, state: SessionState) {
   );
   lines.push(buildModeRules(state.mode ?? "chat", lang, state));
 
-  if (voice)
-    lines.push(lang === "ko" ? `말투/보이스: ${voice}` : `Voice: ${voice}`);
+  if (voice) lines.push(lang === "ko" ? `말투/보이스: ${voice}` : `Voice: ${voice}`);
   if (extra.length)
     lines.push(
       (lang === "ko" ? "캐릭터 추가 규칙:" : "Character rules:") +
@@ -293,53 +284,35 @@ function buildCharacterSystemPrompt(body: Body, state: SessionState) {
         extra.join("\n- ")
     );
   if (dos.length)
-    lines.push(
-      (lang === "ko" ? "해야 할 것:" : "Do:") + "\n- " + dos.join("\n- ")
-    );
+    lines.push((lang === "ko" ? "해야 할 것:" : "Do:") + "\n- " + dos.join("\n- "));
   if (donts.length)
-    lines.push(
-      (lang === "ko" ? "하지 말 것:" : "Don't:") + "\n- " + donts.join("\n- ")
-    );
+    lines.push((lang === "ko" ? "하지 말 것:" : "Don't:") + "\n- " + donts.join("\n- "));
   if (closing)
     lines.push(
-      lang === "ko"
-        ? `가능하면 마지막은: "${closing}"`
-        : `When appropriate, end with: "${closing}"`
+      lang === "ko" ? `가능하면 마지막은: "${closing}"` : `When appropriate, end with: "${closing}"`
     );
   if (catchphrases.length) {
     lines.push(
       lang === "ko"
-        ? `가끔(남발 금지) 자연스럽게 섞어도 되는 문구:\n- ${catchphrases.join(
-            "\n- "
-          )}`
-        : `Occasionally (do not overuse), you may weave in:\n- ${catchphrases.join(
-            "\n- "
-          )}`
+        ? `가끔(남발 금지) 자연스럽게 섞어도 되는 문구:\n- ${catchphrases.join("\n- ")}`
+        : `Occasionally (do not overuse), you may weave in:\n- ${catchphrases.join("\n- ")}`
     );
   }
 
-  lines.push(
-    lang === "ko"
-      ? "반드시 텍스트로만 답해."
-      : "Always output user-visible text."
-  );
+  lines.push(lang === "ko" ? "반드시 텍스트로만 답해." : "Always output user-visible text.");
   return lines.join("\n\n");
 }
 
 /**
  * ===== OpenAI builders =====
  */
-function buildInput(body: Body, state: SessionState) {
+function buildInputFromMessages(body: Body, state: SessionState, messages: { role: "system" | "user" | "assistant"; content: string }[]) {
   return [
     {
       role: "system" as const,
       content: buildCharacterSystemPrompt(body, state),
     },
-    ...body.history.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
-    { role: "user" as const, content: body.message },
+    ...messages,
   ];
 }
 
@@ -375,11 +348,7 @@ function extractTextFromNonStream(respJson: any): string {
   return "";
 }
 
-async function fallbackNonStreamToFakeStream(
-  res: Response,
-  input: any,
-  signal: AbortSignal
-) {
+async function fallbackNonStreamToFakeStream(res: Response, input: any, signal: AbortSignal) {
   try {
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -393,19 +362,12 @@ async function fallbackNonStreamToFakeStream(
 
     if (!openaiRes.ok) {
       const t = await openaiRes.text().catch(() => "");
-      return {
-        ok: false as const,
-        reason: `OpenAI HTTP ${openaiRes.status} ${t}`.slice(0, 300),
-      };
+      return { ok: false as const, reason: `OpenAI HTTP ${openaiRes.status} ${t}`.slice(0, 300) };
     }
 
     const json = await openaiRes.json().catch(() => null);
     const text = json ? extractTextFromNonStream(json) : "";
-    if (!text)
-      return {
-        ok: false as const,
-        reason: "OpenAI returned no text (non-stream)",
-      };
+    if (!text) return { ok: false as const, reason: "OpenAI returned no text (non-stream)" };
 
     for (const ch of text) {
       if (signal.aborted) return { ok: false as const, reason: "aborted" };
@@ -415,25 +377,31 @@ async function fallbackNonStreamToFakeStream(
     sendEvent(res, "done", {});
     return { ok: true as const };
   } catch (e: any) {
-    if (e?.name === "AbortError")
-      return { ok: false as const, reason: "aborted" };
+    if (e?.name === "AbortError") return { ok: false as const, reason: "aborted" };
     return { ok: false as const, reason: e?.message ?? "fallback failed" };
   }
 }
 
-async function tryOpenAIStreamToSSE(
-  res: Response,
-  input: any,
-  signal: AbortSignal
-) {
+/**
+ * OpenAI streaming → our SSE tokens
+ */
+async function tryOpenAIStreamToSSE(res: Response, input: any, signal: AbortSignal) {
   const headerAC = new AbortController();
-  const headerTimer = setTimeout(
-    () => headerAC.abort(),
-    STREAM_HEADER_TIMEOUT_MS
-  );
+  const headerTimer = setTimeout(() => headerAC.abort(), STREAM_HEADER_TIMEOUT_MS);
 
-  const combined = AbortSignal.any([signal, headerAC.signal]);
+  // AbortSignal.any may not exist on some Node versions; fallback
+  const combined: AbortSignal =
+    (AbortSignal as any).any?.([signal, headerAC.signal]) ??
+    (() => {
+      const ac = new AbortController();
+      const onAbort = () => ac.abort();
+      signal.addEventListener("abort", onAbort, { once: true });
+      headerAC.signal.addEventListener("abort", onAbort, { once: true });
+      return ac.signal;
+    })();
+
   console.log("[openai] fetch start");
+
   try {
     const openaiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -444,18 +412,12 @@ async function tryOpenAIStreamToSSE(
       body: JSON.stringify(buildRequestBody(input, true)),
       signal: combined,
     });
-    console.log("[openai] status", openaiRes.status);
-    console.log("[openai] content-type", openaiRes.headers.get("content-type"));
 
     clearTimeout(headerTimer);
 
     if (!openaiRes.ok || !openaiRes.body) {
       const t = await openaiRes.text().catch(() => "");
-      console.error("[openai] error body", t);
-      return {
-        ok: false as const,
-        reason: `OpenAI stream HTTP ${openaiRes.status} ${t}`.slice(0, 300),
-      };
+      return { ok: false as const, reason: `OpenAI stream HTTP ${openaiRes.status} ${t}`.slice(0, 300) };
     }
 
     let sentAnyToken = false;
@@ -465,13 +427,10 @@ async function tryOpenAIStreamToSSE(
       if (e?.type === "done") break;
 
       const token =
-        (e?.type === "response.output_text.delta" &&
-          typeof e?.delta === "string" &&
-          e.delta) ||
+        (e?.type === "response.output_text.delta" && typeof e?.delta === "string" && e.delta) ||
         (typeof e?.delta === "string" && e.delta) ||
         (typeof e?.output_text_delta === "string" && e.output_text_delta) ||
-        (typeof e?.choices?.[0]?.delta?.content === "string" &&
-          e.choices[0].delta.content) ||
+        (typeof e?.choices?.[0]?.delta?.content === "string" && e.choices[0].delta.content) ||
         "";
 
       if (token) {
@@ -486,62 +445,42 @@ async function tryOpenAIStreamToSSE(
       }
 
       if (e?.type === "error" || e?.type === "response.failed") {
-        return {
-          ok: false as const,
-          reason: e?.error?.message ?? "OpenAI stream error",
-        };
+        return { ok: false as const, reason: e?.error?.message ?? "OpenAI stream error" };
       }
     }
 
-    if (!sentAnyToken)
-      return {
-        ok: false as const,
-        reason: "OpenAI stream produced no visible text tokens",
-      };
+    if (!sentAnyToken) {
+      return { ok: false as const, reason: "OpenAI stream produced no visible text tokens" };
+    }
 
     sendEvent(res, "done", {});
     return { ok: true as const };
   } catch (e: any) {
-    console.error("[openai] fetch failed", {
-      name: e?.name,
-      code: e?.code,
-      message: e?.message,
-      cause: e?.cause,
-    });
     clearTimeout(headerTimer);
-    if (e?.name === "AbortError")
-      return { ok: false as const, reason: "stream attempt aborted" };
-    return {
-      ok: false as const,
-      reason: e?.message ?? "stream attempt failed",
-    };
+    if (e?.name === "AbortError") return { ok: false as const, reason: "aborted" };
+    return { ok: false as const, reason: e?.message ?? "stream attempt failed" };
   }
 }
 
 /**
- * ===== Mode / Slot parsing (REFAC: hybrid for slots) =====
+ * ===== Mode / Slot parsing =====
  */
-
-/** normalize for keyword matching (remove spaces) */
 function normalize(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, "");
 }
 
-/** ✅ mode 선택은 "숫자만 단독"일 때만 인정 (3개월/4가지 오인식 방지) */
 function parseModeChoiceOnly(message: string): number | null {
   const s = message.trim();
   const m = s.match(/^([1-5])(?:[).:\-])?\s*$/);
   return m ? Number(m[1]) : null;
 }
 
-/** 슬롯용: 숫자 단독이면 number, 아니면 null */
 function parseNumericOnly(message: string): number | null {
   const s = message.trim();
   const m = s.match(/^(\d+)\s*$/);
   return m ? Number(m[1]) : null;
 }
 
-/** 하이브리드(숫자+키워드+문장) 파서 */
 function parseChoiceHybrid<T extends string>(
   message: string,
   lang: Lang,
@@ -550,20 +489,17 @@ function parseChoiceHybrid<T extends string>(
 ): T | null {
   const raw = message.trim();
 
-  // 1) numeric mapping (slot 단계에서만 사용)
   if (numeric) {
     const n = parseNumericOnly(raw);
     if (n != null && numeric[n]) return numeric[n];
   }
 
-  // 2) keyword mapping
   const key = normalize(raw);
   const map = lang === "ko" ? maps.ko : maps.en;
   if (map[key]) return map[key];
 
-  // 3) substring fallback for sentence inputs
   for (const [k, v] of Object.entries(map)) {
-    if (k.length >= 2 && key.includes(k)) return v; // v는 T
+    if (k.length >= 2 && key.includes(k)) return v;
   }
   return null;
 }
@@ -589,19 +525,11 @@ function modeFromChoice(n: number): Mode {
   return "chat";
 }
 
-/** 슬롯 질문 문구: 숫자/키워드 둘 다 허용 */
-function nextQuestionForMode(
-  mode: Mode,
-  lang: Lang,
-  state: SessionState
-): string | null {
-  const ko = (s: string) => s;
-  const en = (s: string) => s;
-
+function nextQuestionForMode(mode: Mode, lang: Lang, state: SessionState): string | null {
   if (lang === "ko") {
     switch (mode) {
       case "profile":
-        return "좋아요. 어느 정도로 볼까요? (번호/단어 둘 다 가능)\n1) 요약 (요약/summary)\n2) 자세히 (자세히/상세/detailed)";
+        return "좋아요. 어느 정도로 볼까요? (번호/단어)\n1) 요약 (요약/summary)\n2) 자세히 (자세히/상세/detailed)";
       case "fortune": {
         const f = state.slots?.fortune;
         if (!f?.timeframe)
@@ -620,43 +548,31 @@ function nextQuestionForMode(
     }
   }
 
-  // EN
   switch (mode) {
     case "profile":
-      return en(
-        "Got it. How detailed do you want it? (number/keyword ok)\n1) Summary (summary)\n2) Detailed (detailed)"
-      );
+      return "Got it. How detailed do you want it? (number/keyword ok)\n1) Summary (summary)\n2) Detailed (detailed)";
     case "fortune": {
       const f = state.slots?.fortune;
       if (!f?.timeframe)
-        return en(
-          "Got it. What timeframe? (number/keyword ok)\n1) This week (week)\n2) This month (month)\n3) 2026 (first half) (halfyear / 6months)"
-        );
+        return "Got it. What timeframe? (number/keyword ok)\n1) This week (week)\n2) This month (month)\n3) 2026 (first half) (halfyear / 6months)";
       if (!f?.topic)
-        return en(
-          "What topic should we focus on? (number/keyword ok)\n1) Career (career)\n2) Love (love)\n3) Money (money)\n4) Health (health)"
-        );
+        return "What topic should we focus on? (number/keyword ok)\n1) Career (career)\n2) Love (love)\n3) Money (money)\n4) Health (health)";
       return null;
     }
     case "career":
-      return en(
-        "Got it. What’s your main goal? (number/keyword ok)\n1) Job search (job)\n2) Resume (resume)\n3) Interviews (interview)\n4) Portfolio (portfolio)"
-      );
+      return "Got it. What’s your main goal? (number/keyword ok)\n1) Job search (job)\n2) Resume (resume)\n3) Interviews (interview)\n4) Portfolio (portfolio)";
     case "love":
-      return en(
-        "Got it. Which best describes your situation? (number/keyword ok)\n1) Talking stage (talking)\n2) Dating (dating)\n3) Long-term (long)\n4) Breakup / moving on (breakup)"
-      );
+      return "Got it. Which best describes your situation? (number/keyword ok)\n1) Talking stage (talking)\n2) Dating (dating)\n3) Long-term (long)\n4) Breakup / moving on (breakup)";
     case "chat":
     default:
-      return en("Okay—what’s the one thing on your mind right now?");
+      return "Okay—what’s the one thing on your mind right now?";
   }
 }
 
-/** 하이브리드 슬롯 파서들 */
-function parseProfileDepth(
-  message: string,
-  lang: Lang
-): "summary" | "detailed" | null {
+/**
+ * Slot parsers
+ */
+function parseProfileDepth(message: string, lang: Lang): "summary" | "detailed" | null {
   return parseChoiceHybrid(
     message,
     lang,
@@ -680,10 +596,7 @@ function parseProfileDepth(
   );
 }
 
-function parseFortuneTimeframe(
-  message: string,
-  lang: Lang
-): "week" | "month" | "half_year" | null {
+function parseFortuneTimeframe(message: string, lang: Lang): "week" | "month" | "half_year" | null {
   return parseChoiceHybrid(
     message,
     lang,
@@ -715,10 +628,7 @@ function parseFortuneTimeframe(
   );
 }
 
-function parseFortuneTopic(
-  message: string,
-  lang: Lang
-): "career" | "love" | "money" | "health" | null {
+function parseFortuneTopic(message: string, lang: Lang): "career" | "love" | "money" | "health" | null {
   return parseChoiceHybrid(
     message,
     lang,
@@ -754,10 +664,7 @@ function parseFortuneTopic(
   );
 }
 
-function parseCareerGoal(
-  message: string,
-  lang: Lang
-): "job_search" | "resume" | "interviews" | "portfolio" | null {
+function parseCareerGoal(message: string, lang: Lang): "job_search" | "resume" | "interviews" | "portfolio" | null {
   return parseChoiceHybrid(
     message,
     lang,
@@ -790,10 +697,7 @@ function parseCareerGoal(
   );
 }
 
-function parseLoveStage(
-  message: string,
-  lang: Lang
-): "talking" | "dating" | "long_term" | "breakup" | null {
+function parseLoveStage(message: string, lang: Lang): "talking" | "dating" | "long_term" | "breakup" | null {
   return parseChoiceHybrid(
     message,
     lang,
@@ -826,31 +730,48 @@ function parseLoveStage(
   );
 }
 
-/** 슬롯 채우기: 이제 숫자+키워드 모두 처리 */
-function handleSlotFill(
-  state: SessionState,
-  body: Body
-): { handled: boolean; reply?: string } {
+function isReadyToCallLLM(state: SessionState): boolean {
+  const mode = state.mode;
+  if (!mode) return false;
+  if (mode === "chat") return true;
+  if (mode === "profile") return !!state.slots?.profile?.depth;
+  if (mode === "career") return !!state.slots?.career?.goal;
+  if (mode === "love") return !!state.slots?.love?.stage;
+  if (mode === "fortune") return !!state.slots?.fortune?.timeframe && !!state.slots?.fortune?.topic;
+  return true;
+}
+
+/**
+ * 슬롯 입력을 “소비”하고, 마지막 슬롯이 채워지면 LLM에 보낼 합성 프롬프트를 만든다.
+ */
+type SlotHandleResult =
+  | { handled: false }
+  | { handled: true; reply: string } // 다음 질문(재프롬프트 포함)
+  | { handled: true; readyToGenerate: true; syntheticUserPrompt: string };
+
+function handleSlotFillAndMaybeGenerate(state: SessionState, body: Body): SlotHandleResult {
   const lang = body.lang;
   const mode = state.mode;
-  if (!mode) return { handled: false };
-
-  // chat은 슬롯 없음
-  if (mode === "chat") return { handled: false };
+  if (!mode || mode === "chat") return { handled: false };
 
   // profile
   if (mode === "profile") {
     const p = state.slots!.profile ?? {};
     if (!p.depth) {
       const depth = parseProfileDepth(body.message, lang);
-      if (!depth)
-        return {
-          handled: true,
-          reply: nextQuestionForMode(mode, lang, state) ?? "",
-        };
+      if (!depth) {
+        // ❗ 절대 침묵 금지: 다시 질문
+        return { handled: true, reply: nextQuestionForMode(mode, lang, state) ?? "" };
+      }
       p.depth = depth;
       state.slots!.profile = p;
-      return { handled: true, reply: "" };
+
+      // ✅ 여기서 바로 생성: user의 "1" 같은 입력은 LLM에 보내지 않음
+      const prompt =
+        lang === "ko"
+          ? `내 성격 프로필을 ${depth === "summary" ? "요약" : "자세히"}로 설명해줘. 강점 2~3개, 주의점 1~2개, 그리고 오늘 적용할 한 가지 조언을 포함해줘.`
+          : `Give me my personality profile in a ${depth} way. Include 2–3 strengths, 1–2 pitfalls, and one practical tip I can apply today.`;
+      return { handled: true, readyToGenerate: true, syntheticUserPrompt: prompt };
     }
     return { handled: false };
   }
@@ -861,30 +782,25 @@ function handleSlotFill(
 
     if (!f.timeframe) {
       const tf = parseFortuneTimeframe(body.message, lang);
-      if (!tf)
-        return {
-          handled: true,
-          reply: nextQuestionForMode(mode, lang, state) ?? "",
-        };
+      if (!tf) return { handled: true, reply: nextQuestionForMode(mode, lang, state) ?? "" };
       f.timeframe = tf;
       state.slots!.fortune = f;
-      // 다음 질문(주제)로 진행
-      return {
-        handled: true,
-        reply: nextQuestionForMode(mode, lang, state) ?? "",
-      };
+
+      // 다음 질문(토픽)
+      return { handled: true, reply: nextQuestionForMode(mode, lang, state) ?? "" };
     }
 
     if (!f.topic) {
       const topic = parseFortuneTopic(body.message, lang);
-      if (!topic)
-        return {
-          handled: true,
-          reply: nextQuestionForMode(mode, lang, state) ?? "",
-        };
+      if (!topic) return { handled: true, reply: nextQuestionForMode(mode, lang, state) ?? "" };
       f.topic = topic;
       state.slots!.fortune = f;
-      return { handled: true, reply: "" };
+
+      const prompt =
+        lang === "ko"
+          ? `운세/흐름을 봐줘. 기간=${f.timeframe}, 주제=${f.topic}. 단정적 예언 말고, 가능성/주의점/실천 팁 중심으로 3~5문장 + 불릿 최대 3개로.`
+          : `Give me a fortune/flow reading. timeframe=${f.timeframe}, topic=${f.topic}. No absolute predictions; focus on possibilities, cautions, and practical tips. Keep it short.`;
+      return { handled: true, readyToGenerate: true, syntheticUserPrompt: prompt };
     }
 
     return { handled: false };
@@ -895,14 +811,15 @@ function handleSlotFill(
     const c = state.slots!.career ?? {};
     if (!c.goal) {
       const goal = parseCareerGoal(body.message, lang);
-      if (!goal)
-        return {
-          handled: true,
-          reply: nextQuestionForMode(mode, lang, state) ?? "",
-        };
+      if (!goal) return { handled: true, reply: nextQuestionForMode(mode, lang, state) ?? "" };
       c.goal = goal;
       state.slots!.career = c;
-      return { handled: true, reply: "" };
+
+      const prompt =
+        lang === "ko"
+          ? `직업/진로 코칭을 해줘. 내 목표=${c.goal}. 지금 당장 할 수 있는 다음 행동 2~3개를 우선순위로 제시해줘.`
+          : `Coach me on my career. My goal=${c.goal}. Give me 2–3 prioritized next actions I can do today.`;
+      return { handled: true, readyToGenerate: true, syntheticUserPrompt: prompt };
     }
     return { handled: false };
   }
@@ -912,31 +829,20 @@ function handleSlotFill(
     const l = state.slots!.love ?? {};
     if (!l.stage) {
       const stage = parseLoveStage(body.message, lang);
-      if (!stage)
-        return {
-          handled: true,
-          reply: nextQuestionForMode(mode, lang, state) ?? "",
-        };
+      if (!stage) return { handled: true, reply: nextQuestionForMode(mode, lang, state) ?? "" };
       l.stage = stage;
       state.slots!.love = l;
-      return { handled: true, reply: "" };
+
+      const prompt =
+        lang === "ko"
+          ? `연애/관계 코칭을 해줘. 내 상황=${l.stage}. 압박 없이 선택지 2~3개와, 바로 써먹을 한 문장(대화 예시) 1개를 줘.`
+          : `Coach me on relationships. My situation=${l.stage}. Offer 2–3 options without pressure, and give me one ready-to-use sentence I can say.`;
+      return { handled: true, readyToGenerate: true, syntheticUserPrompt: prompt };
     }
     return { handled: false };
   }
 
   return { handled: false };
-}
-
-function isReadyToCallLLM(state: SessionState): boolean {
-  const mode = state.mode;
-  if (!mode) return false;
-  if (mode === "chat") return true;
-  if (mode === "profile") return !!state.slots?.profile?.depth;
-  if (mode === "career") return !!state.slots?.career?.goal;
-  if (mode === "love") return !!state.slots?.love?.stage;
-  if (mode === "fortune")
-    return !!state.slots?.fortune?.timeframe && !!state.slots?.fortune?.topic;
-  return true;
 }
 
 /**
@@ -980,12 +886,9 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     upstreamAC.abort();
   };
 
-  // total timeout (전체 요청 상한)
   const totalTimer = setTimeout(() => abortUpstream("total timeout"), UPSTREAM_TOTAL_TIMEOUT_MS);
 
-  // IMPORTANT: SSE에서는 close 이벤트가 너무 쉽게/빨리 올 수 있으니 즉시 abort 금지
   const onClientClose = (who: "req" | "res") => {
-    // 150ms 정도 기다렸다가 진짜로 끝난 케이스인지 확인
     setTimeout(() => {
       if (finished) return;
       if (res.writableEnded) return;
@@ -997,65 +900,89 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   res.on("close", () => onClientClose("res"));
 
   try {
-    // ---- 1) mode select ----
+    /**
+     * ---- 0) mode selection gate ----
+     * ✅ IMPORTANT: mode가 없으면 숫자 1-5만 모드 선택으로 인정.
+     * 그 외 입력은 chat로 떨어뜨리지 말고 메뉴를 다시 제시(침묵/꼬임 방지).
+     */
     if (!state.mode) {
       const n = parseModeChoiceOnly(body.message);
-      if (n && n >= 1 && n <= 5) {
-        state.mode = modeFromChoice(n);
 
-        const q = nextQuestionForMode(state.mode, body.lang, state);
-        if (q) return finish(() => sendPlainAssistant(res, q));
-      } else {
-        state.mode = "chat";
+      if (!n) {
+        // 아직 메뉴 선택 안 함 → 메뉴를 다시 보여줌
+        return finish(() => sendPlainAssistant(res, askModeMenu(body.lang)));
+      }
+
+      state.mode = modeFromChoice(n);
+      const q = nextQuestionForMode(state.mode, body.lang, state);
+
+      // chat이면 바로 다음 질문(자유형)으로 넘어감
+      if (q) return finish(() => sendPlainAssistant(res, q));
+    }
+
+    console.log("[chat] mode =", state.mode);
+
+    /**
+     * ---- 1) slot fill (NO SILENCE) ----
+     */
+    const slotResult = handleSlotFillAndMaybeGenerate(state, body);
+
+    if (slotResult.handled) {
+      // 다음 질문(혹은 재질문)만 보내고 끝
+      if ("reply" in slotResult) {
+        return finish(() => sendPlainAssistant(res, slotResult.reply));
+      }
+
+      // 마지막 슬롯까지 채워져서 바로 생성해야 함
+      if ("readyToGenerate" in slotResult && slotResult.readyToGenerate) {
+        const synthetic = slotResult.syntheticUserPrompt;
+
+        // ✅ 슬롯 입력("1") 같은 것 대신 synthetic prompt로 LLM 호출
+        const messages = [
+          ...body.history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+          { role: "user" as const, content: synthetic },
+        ];
+
+        console.log("[chat] CALLING OPENAI (synthetic)", { mode: state.mode });
+
+        const input = buildInputFromMessages(body, state, messages);
+
+        const streamResult = await tryOpenAIStreamToSSE(res, input, upstreamAC.signal);
+        if (streamResult.ok) return finish();
+
+        const fallbackResult = await fallbackNonStreamToFakeStream(res, input, upstreamAC.signal);
+        if (!fallbackResult.ok) return finish(() => sendEvent(res, "error", { error: fallbackResult.reason }));
+
+        return finish();
       }
     }
 
-    console.log("[chat] mode after select =", state.mode);
-
-    // ---- 2) slot fill ----
-    const slot = handleSlotFill(state, body);
-    console.log("[chat] slot handled =", slot.handled, "ready =", isReadyToCallLLM(state));
-
-    if (slot.handled) {
-      // slot.reply는 ""일 수도 있으니 length 체크로 판단
-      if (slot.reply != null && slot.reply.length > 0) {
-        return finish(() => sendPlainAssistant(res, slot.reply as string));
-      }
-
-      // 슬롯이 아직 부족하면 다음 질문
-      if (!isReadyToCallLLM(state)) {
-        const q = nextQuestionForMode(state.mode!, body.lang, state);
-        return finish(() =>
-          sendPlainAssistant(
-            res,
-            q ?? (body.lang === "ko" ? "좋아. 계속 말해줘." : "Okay—go on.")
-          )
-        );
-      }
-      // 슬롯 완성 -> 아래 OpenAI 호출
-    }
-
-    // ---- 3) still not ready -> ask ----
+    /**
+     * ---- 2) still not ready -> ask next question ----
+     */
     if (!isReadyToCallLLM(state)) {
       const q = nextQuestionForMode(state.mode ?? "chat", body.lang, state) ?? askModeMenu(body.lang);
       return finish(() => sendPlainAssistant(res, q));
     }
 
-    // ---- 4) call OpenAI ----
+    /**
+     * ---- 3) normal LLM call (free text) ----
+     * 여기서만 body.message를 user message로 포함한다.
+     */
     console.log("[chat] CALLING OPENAI", { mode: state.mode });
 
-    const input = buildInput(body, state);
+    const messages = [
+      ...body.history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      { role: "user" as const, content: body.message },
+    ];
 
-    // ✅ OpenAI fetch는 upstreamAC.signal 사용
+    const input = buildInputFromMessages(body, state, messages);
+
     const streamResult = await tryOpenAIStreamToSSE(res, input, upstreamAC.signal);
-
     if (streamResult.ok) return finish();
 
-    // 스트림 실패 시 fallback
     const fallbackResult = await fallbackNonStreamToFakeStream(res, input, upstreamAC.signal);
-    if (!fallbackResult.ok) {
-      return finish(() => sendEvent(res, "error", { error: fallbackResult.reason }));
-    }
+    if (!fallbackResult.ok) return finish(() => sendEvent(res, "error", { error: fallbackResult.reason }));
 
     return finish();
   } catch (e: any) {
@@ -1069,6 +996,5 @@ chatRouter.post("/", async (req: Request, res: Response) => {
     clearTimeout(totalTimer);
   }
 });
-
 
 export default chatRouter;
