@@ -53,12 +53,19 @@ export default function Chat({
     isStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
+  useEffect(() => {
+    console.log("[Chat] mounted");
+    return () => console.log("[Chat] unmounted");
+  }, []);
+
   // abort tracing
   const abortReasonRef = useRef<string | null>(null);
   const abortCurrent = (reason: string) => {
     console.log("[Chat] abortCurrent called:", reason);
-    abortReasonRef.current = reason;
-    abortRef.current?.abort(reason);
+    const c = abortRef.current;
+    if (!c) return;
+    if (!c.signal.aborted) c.abort(reason);
+    abortRef.current = null;
   };
 
   // React 18 StrictMode(dev): mount -> cleanup -> mount (fake unmount) once
