@@ -938,9 +938,11 @@ function isReadyToCallLLM(state: SessionState): boolean {
     return !!state.slots?.fortune?.timeframe && !!state.slots?.fortune?.topic;
   return true;
 }
-
 /**
- * ===== Route =====
+ * ===== Route (patched) =====
+ * - Do NOT abort on req "close" (too noisy for SSE)
+ * - Abort on req "aborted" and res "close"
+ * - Treat AbortError as normal end (no SSE "error" event)
  */
 chatRouter.post("/", async (req: Request, res: Response) => {
   const cleanupSSE = sseInit(req, res);
@@ -976,25 +978,45 @@ chatRouter.post("/", async (req: Request, res: Response) => {
   const upstreamAC = new AbortController();
   const abortUpstream = (reason: string) => {
     if (upstreamAC.signal.aborted) return;
-    console.log("[chat] abort upstream:", reason);
+    console.log("[chat] abort upstream:", reason, {
+      finished,
+      resEnded: res.writableEnded,
+      reqAborted: (req as any).aborted,
+    });
+    // keep a reason for debugging
     upstreamAC.abort(new Error(reason));
   };
 
   // total timeout (전체 요청 상한)
-  const totalTimer = setTimeout(() => abortUpstream("total timeout"), UPSTREAM_TOTAL_TIMEOUT_MS);
+  const totalTimer = setTimeout(
+    () => abortUpstream("total timeout"),
+    UPSTREAM_TOTAL_TIMEOUT_MS
+  );
 
-  // IMPORTANT: SSE에서는 close 이벤트가 너무 쉽게/빨리 올 수 있으니 즉시 abort 금지
-  const onClientClose = (who: "req" | "res") => {
-    // 150ms 정도 기다렸다가 진짜로 끝난 케이스인지 확인
+  // SSE: close 이벤트가 헛발로 튈 수 있음 -> 충분히 지연 후 확인
+  const onClientGone = (why: string) => {
     setTimeout(() => {
       if (finished) return;
       if (res.writableEnded) return;
-      abortUpstream(`${who} close`);
-    }, 150);
+      abortUpstream(why);
+    }, 800);
   };
 
-  req.on("close", () => onClientClose("req"));
-  res.on("close", () => onClientClose("res"));
+  // ✅ 신뢰할 수 있는 이벤트만 abort 트리거로 사용
+  req.on("aborted", () => onClientGone("req aborted"));
+  res.on("close", () => onClientGone("res close"));
+
+  // ❌ req "close"는 SSE에서 너무 noisy -> abort 금지, 로그만
+  req.on("close", () => {
+    console.log("[chat] req close (ignored)", {
+      finished,
+      resEnded: res.writableEnded,
+      reqAborted: (req as any).aborted,
+      reqComplete: (req as any).complete,
+      reqDestroyed: (req as any).destroyed,
+      socketDestroyed: req.socket?.destroyed,
+    });
+  });
 
   try {
     // ---- 1) mode select ----
@@ -1014,15 +1036,18 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 
     // ---- 2) slot fill ----
     const slot = handleSlotFill(state, body);
-    console.log("[chat] slot handled =", slot.handled, "ready =", isReadyToCallLLM(state));
+    console.log(
+      "[chat] slot handled =",
+      slot.handled,
+      "ready =",
+      isReadyToCallLLM(state)
+    );
 
     if (slot.handled) {
-      // slot.reply는 ""일 수도 있으니 length 체크로 판단
       if (slot.reply != null && slot.reply.length > 0) {
         return finish(() => sendPlainAssistant(res, slot.reply as string));
       }
 
-      // 슬롯이 아직 부족하면 다음 질문
       if (!isReadyToCallLLM(state)) {
         const q = nextQuestionForMode(state.mode!, body.lang, state);
         return finish(() =>
@@ -1037,7 +1062,9 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 
     // ---- 3) still not ready -> ask ----
     if (!isReadyToCallLLM(state)) {
-      const q = nextQuestionForMode(state.mode ?? "chat", body.lang, state) ?? askModeMenu(body.lang);
+      const q =
+        nextQuestionForMode(state.mode ?? "chat", body.lang, state) ??
+        askModeMenu(body.lang);
       return finish(() => sendPlainAssistant(res, q));
     }
 
@@ -1048,28 +1075,49 @@ chatRouter.post("/", async (req: Request, res: Response) => {
 
     // ✅ OpenAI fetch는 upstreamAC.signal 사용
     const streamResult = await tryOpenAIStreamToSSE(res, input, upstreamAC.signal);
-
     if (streamResult.ok) return finish();
 
     // 스트림 실패 시 fallback
-    const fallbackResult = await fallbackNonStreamToFakeStream(res, input, upstreamAC.signal);
+    const fallbackResult = await fallbackNonStreamToFakeStream(
+      res,
+      input,
+      upstreamAC.signal
+    );
+
     if (!fallbackResult.ok) {
+      // Abort 계열이면 "에러"로 보내지 말고 조용히 종료
+      if (upstreamAC.signal.aborted && fallbackResult.reason === "aborted") {
+        return finish();
+      }
       return finish(() => sendEvent(res, "error", { error: fallbackResult.reason }));
     }
 
     return finish();
   } catch (e: any) {
-    console.log("abort reason:", upstreamAC.signal.reason);
+    const isAbort =
+      e?.name === "AbortError" ||
+      upstreamAC.signal.aborted ||
+      (upstreamAC.signal.reason &&
+        (upstreamAC.signal.reason as any)?.message?.includes("close"));
+
+    if (isAbort) {
+      console.log("[chat] aborted normally:", {
+        name: e?.name,
+        msg: e?.message,
+        reason: upstreamAC.signal.reason,
+      });
+      return finish(); // ✅ abort는 정상 종료 취급
+    }
+
     console.error("[chat] route error", e?.name, e?.message);
     return finish(() =>
       sendEvent(res, "error", {
-        error: e?.name === "AbortError" ? "Request aborted / timeout" : e?.message ?? "server error",
+        error: e?.message ?? "server error",
       })
     );
   } finally {
     clearTimeout(totalTimer);
   }
 });
-
 
 export default chatRouter;

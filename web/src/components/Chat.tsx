@@ -68,11 +68,11 @@ export default function Chat({
       }
 
       // Always abort any in-flight request on real unmount
-      // if (abortRef.current) {
-      //   try {
-      //     abortRef.current.abort("unmount");
-      //   } catch {}
-      // }
+      if (abortRef.current) {
+        try {
+          abortRef.current.abort("unmount");
+        } catch {}
+      }
     };
   }, []);
 
