@@ -45,7 +45,6 @@ export async function streamChat(params: {
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
-  // ensure callbacks fire once
   let finished = false;
   const safeDone = () => {
     if (finished) return;
@@ -58,10 +57,17 @@ export async function streamChat(params: {
     params.onError(err);
   };
 
+  // done 이벤트를 받았는지 추적
+  let gotDoneEvent = false;
+
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // 있으면 SSE 라우팅/프록시에서 도움이 됨
+        "Accept": "text/event-stream",
+      },
       body: JSON.stringify({
         sessionId: params.sessionId,
         archetypeId: params.archetypeId,
@@ -69,8 +75,8 @@ export async function streamChat(params: {
         message: params.message,
         history: params.history,
       }),
-      // ✅ use caller signal directly (no nested AbortController)
       signal: params.signal,
+      cache: "no-store",
     });
 
     if (!res.ok || !res.body) {
@@ -90,7 +96,6 @@ export async function streamChat(params: {
       buffer += decoder.decode(value, { stream: true });
       if (buffer.includes("\r")) buffer = buffer.replace(/\r/g, "");
 
-      // SSE events separated by blank line
       const blocks = buffer.split("\n\n");
       buffer = blocks.pop() ?? "";
 
@@ -103,19 +108,15 @@ export async function streamChat(params: {
           try {
             const obj = JSON.parse(data);
             const token = obj?.token;
-            if (typeof token === "string" && token.length) {
-              params.onToken(token);
-            }
-          } catch {
-            // ignore malformed token payloads
-          }
+            if (typeof token === "string" && token.length) params.onToken(token);
+          } catch {}
           continue;
         }
 
         if (event === "done") {
-          // server explicitly done
-          safeDone();
-          return;
+          gotDoneEvent = true;
+          // ✅ 여기서 return 하지 말고 루프를 종료시켜 자연스럽게 마무리
+          break;
         }
 
         if (event === "error") {
@@ -124,31 +125,31 @@ export async function streamChat(params: {
             try {
               const obj = JSON.parse(data);
               msg = obj?.error ?? msg;
-            } catch {
-              // ignore
-            }
+            } catch {}
           }
           safeError(msg);
           return;
         }
       }
+
+      if (gotDoneEvent) break;
     }
 
-    // stream ended without explicit done
+    // done 이벤트를 받았든, 스트림이 그냥 끝났든 정상 종료 처리
     safeDone();
   } catch (e: any) {
-    if (e?.name === "AbortError") {
-      safeError("aborted"); // treat as normal cancel
+    // ✅ Abort는 정상 취소로 처리 (에러로 올리지 않기)
+    if (e?.name === "AbortError" || params.signal?.aborted) {
+      safeDone();
       return;
     }
     safeError(e?.message ?? "stream error");
   } finally {
-    if (reader) {
+    // ✅ abort인 경우에만 cancel (정상 흐름에서는 서버가 res.end() 할 때까지 두는 게 안전)
+    if (reader && (params.signal?.aborted || !gotDoneEvent)) {
       try {
         await reader.cancel();
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
   }
 }

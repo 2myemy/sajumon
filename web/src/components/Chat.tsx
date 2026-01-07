@@ -132,6 +132,7 @@ export default function Chat({
 
     // Always abort previous request if exists (simple & reliable)
     if (abortRef.current) {
+      console.log("[Chat] abort previous request: submit new request");
       try {
         abortRef.current.abort("submit: new request");
       } catch {}
